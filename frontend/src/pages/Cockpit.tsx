@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { WORKER_ORDER } from "@/lib/agents";
 import { useI18n } from "@/lib/i18n";
-import type { Agent, Channel, Mission, Task } from "@/lib/types";
+import type { Agent, Briefing, BriefingSettings, Channel, Mission, Task } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import AgentAvatar from "@/components/AgentAvatar";
 import StatusBadge from "@/components/StatusBadge";
@@ -157,6 +160,106 @@ function MissionPanel() {
   );
 }
 
+const BRIEFING_HOURS = [5, 6, 7, 8, 9, 10];
+
+function BriefingCard() {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const [cityDraft, setCityDraft] = useState("");
+
+  const { data: briefings } = useQuery({
+    queryKey: ["briefings"],
+    queryFn: () => apiGet<Briefing[]>("/briefing"),
+    refetchInterval: 10000,
+  });
+  const { data: settings } = useQuery({
+    queryKey: ["briefing-settings"],
+    queryFn: () => apiGet<BriefingSettings>("/briefing/settings"),
+  });
+
+  useEffect(() => {
+    if (settings?.city) setCityDraft(settings.city);
+  }, [settings?.city]);
+
+  const run = useMutation({
+    mutationFn: () => apiPost<Briefing>("/briefing/run"),
+    onSuccess: () => {
+      toast.success(t("briefing.done"));
+      queryClient.invalidateQueries({ queryKey: ["briefings"] });
+      queryClient.invalidateQueries({ queryKey: ["room"] });
+    },
+    onError: () => toast.error(t("common.error")),
+  });
+
+  const save = useMutation({
+    mutationFn: (body: Record<string, unknown>) => apiPatch<BriefingSettings>("/briefing/settings", body),
+    onSuccess: () => {
+      toast.success(t("briefing.saved"));
+      queryClient.invalidateQueries({ queryKey: ["briefing-settings"] });
+    },
+    onError: () => toast.error(t("common.error")),
+  });
+
+  const latest = briefings?.[0];
+
+  return (
+    <Card data-testid="briefing-card">
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle className="font-heading text-base">{t("briefing.title")}</CardTitle>
+        <Button size="sm" data-testid="briefing-run-btn" disabled={run.isPending} onClick={() => run.mutate()}>
+          {run.isPending ? t("briefing.running") : t("briefing.run")}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <Checkbox
+              data-testid="briefing-auto-toggle"
+              checked={settings?.auto ?? true}
+              onCheckedChange={(c) => save.mutate({ auto: Boolean(c) })}
+            />
+            {t("briefing.auto")}
+          </label>
+          <Select value={String(settings?.hour ?? 7)} onValueChange={(v: string) => save.mutate({ hour: Number(v) })}>
+            <SelectTrigger size="sm" className="w-20" data-testid="briefing-hour-select">
+              <SelectValue>{(v) => `${v as string}h`}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {BRIEFING_HOURS.map((h) => (
+                <SelectItem key={h} value={String(h)}>
+                  {`${h}h`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            data-testid="briefing-city-input"
+            value={cityDraft}
+            onChange={(e) => setCityDraft(e.target.value)}
+            onBlur={() => {
+              if (cityDraft.trim() && cityDraft.trim() !== settings?.city) save.mutate({ city: cityDraft.trim() });
+            }}
+            placeholder={t("briefing.city")}
+            className="h-9 w-36 text-xs"
+          />
+        </div>
+        {latest ? (
+          <div className="rounded-lg border bg-sky-50/50 p-3" data-testid="briefing-latest">
+            <p className="mb-1 font-mono text-[11px] text-slate-500">
+              {latest.day} · {latest.city}
+            </p>
+            <p className="line-clamp-6 whitespace-pre-wrap text-sm leading-relaxed">{latest.content.replace(/\*\*/g, "")}</p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground" data-testid="briefing-empty">
+            {t("briefing.empty")}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function StatsRow() {
   const { t } = useI18n();
   const { data: missions } = useQuery({ queryKey: ["missions"], queryFn: () => apiGet<Mission[]>("/missions"), refetchInterval: 3000 });
@@ -275,6 +378,7 @@ export default function Cockpit() {
           </Card>
         </div>
         <div className="space-y-4 sm:space-y-5 lg:col-span-4">
+          <BriefingCard />
           <TasksPreview />
           <ChannelsPreview />
         </div>

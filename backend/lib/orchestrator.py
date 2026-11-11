@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from lib.brain import llm_json, llm_text
 from lib.db import db
+from lib.search import web_search
 
 logger = logging.getLogger(__name__)
 
@@ -272,3 +273,45 @@ async def zero_direct_reply() -> None:
             "delego ao Pro e aciono Jarvis, Aluna e Plus pra executar tudo pelo celular."
         )
     await db.zero_messages.insert_one({"id": _new_id(), "role": "zero", "content": reply, "created_at": _now()})
+
+
+BRIEFING_SYSTEM = (
+    "Você é o Zero, agente pessoal do Chefe (loja AeroPartz). Monte o briefing da manhã em português do Brasil, "
+    "objetivo, em no máximo 140 palavras, com seções curtas: Clima (com base nos resultados da busca), "
+    "Loja AeroPartz (checklist de abertura: caixa, estoque crítico, pedidos em aberto, cupons ativos), "
+    "Prioridades de hoje e Lembretes (e-mails e câmeras). Use os dados de busca apenas para o clima; "
+    "para o resto, diga o que você mesmo vai verificar. Não invente números."
+)
+
+
+async def run_briefing(settings: dict, day: str | None = None) -> dict:
+    """Morning routine: real weather search + Zero's briefing, posted to the room."""
+    now = datetime.now(timezone.utc)
+    city = settings.get("city", "São Paulo")
+    hits = await web_search(f"previsão do tempo hoje {city}")
+    search_block = "\n".join(f"- {h.title}: {h.snippet[:140]}" for h in hits[:5]) or "(busca indisponível agora)"
+
+    zero = await _agent("zero") or {}
+    reply = await llm_text(
+        BRIEFING_SYSTEM,
+        f"Clima — resultados da busca real para {city}:\n{search_block}\n\nMonte o briefing da manhã.",
+        session_id=f"briefing-{_new_id()}",
+        provider=zero.get("provider", "openai"),
+        model=zero.get("model", "gpt-5.4"),
+    )
+    if reply is None:
+        reply = (
+            "[modo simulado] Bom dia, Chefe. Sem nuvem agora: verifique caixa, estoque crítico, pedidos em aberto "
+            "e cupons ativos da AeroPartz; confira e-mails e as câmeras."
+        )
+
+    doc = {
+        "id": _new_id(),
+        "day": day or now.strftime("%Y-%m-%d"),
+        "city": city,
+        "content": reply,
+        "created_at": _now(),
+    }
+    await db.briefings.insert_one(doc)
+    await _post_room("zero", "briefing", f"🌅 Briefing da manhã ({doc['day']} — {city}):\n\n{reply}")
+    return doc

@@ -121,3 +121,23 @@ class SystemInfo(BaseModel):
     app: str
     llm_configured: bool
     brain: str  # cloud | simulated
+
+
+class Briefing(BaseModel):
+    id: str = Field(default_factory=new_id)
+    day: str  # YYYY-MM-DD (America/Sao_Paulo)
+    city: str = ""
+    content: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class BriefingSettingsIn(BaseModel):
+    auto: Optional[bool] = None
+    hour: Optional[int] = Field(default=None, ge=0, le=23)
+    city: Optional[str] = Field(default=None, max_length=80)
+
+
+class BriefingSettingsOut(BaseModel):
+    auto: bool = True
+    hour: int = 7
+    city: str = "São Paulo"

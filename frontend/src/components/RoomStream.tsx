@@ -86,9 +86,11 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
               ? "border-l-4 border-blue-500 bg-blue-50/50"
               : m.kind === "summary"
                 ? "border-l-4 border-emerald-500 bg-emerald-50/50"
-                : m.kind === "system"
-                  ? "border border-dashed border-border bg-slate-50/60"
-                  : "border border-border bg-white";
+                : m.kind === "briefing"
+                  ? "border-l-4 border-sky-500 bg-sky-50/60"
+                  : m.kind === "system"
+                    ? "border border-dashed border-border bg-slate-50/60"
+                    : "border border-border bg-white";
           return (
             <motion.article
               key={m.id}
@@ -109,6 +111,11 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
                 {m.kind === "summary" && (
                   <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                     {t("kind.summary")}
+                  </span>
+                )}
+                {m.kind === "briefing" && (
+                  <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    {t("kind.briefing")}
                   </span>
                 )}
                 {m.kind === "system" && (

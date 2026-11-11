@@ -82,3 +82,17 @@ export interface SystemInfo {
   llm_configured: boolean;
   brain: string; // cloud | simulated
 }
+
+export interface Briefing {
+  id: string;
+  day: string; // YYYY-MM-DD (America/Sao_Paulo)
+  city: string;
+  content: string;
+  created_at: string;
+}
+
+export interface BriefingSettings {
+  auto: boolean;
+  hour: number;
+  city: string;
+}

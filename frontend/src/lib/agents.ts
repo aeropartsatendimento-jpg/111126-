@@ -14,7 +14,7 @@ const NAMES: Record<string, string> = {
   zero: "Zero",
   pro: "Pro",
   jarvis: "Jarvis",
-  aluna: "Aluna",
+  aluna: "Luna",
   plus: "Plus",
 };
 
