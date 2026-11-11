@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Globe, Monitor, Server } from "lucide-react";
 import { SiFacebook, SiWhatsapp } from "@icons-pack/react-simple-icons";
 import { toast } from "sonner";
@@ -7,7 +8,7 @@ import { toast } from "sonner";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import type { Channel, McpInfo, SearchResponse } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,17 +126,23 @@ function ChannelCard({ channel }: { channel: Channel }) {
           <StatusBadge status={channel.status} testid={`channel-status-${channel.key}`} />
         </div>
 
-        <Button
-          data-testid={`channel-${channel.key}-toggle`}
-          variant={channel.status === "connected" ? "outline" : "default"}
-          className="w-full"
-          onClick={() =>
-            patch.mutate({ status: channel.status === "connected" ? "disconnected" : "connected" })
-          }
-          disabled={patch.isPending}
-        >
-          {channel.status === "connected" ? t("channels.disconnect") : t("channels.connect")}
-        </Button>
+        {channel.key === "visual" ? (
+          <Link to="/navegador" data-testid="channel-visual-open-simulated" className={buttonVariants({ className: "w-full" })}>
+            {t("visual.open")}
+          </Link>
+        ) : (
+          <Button
+            data-testid={`channel-${channel.key}-toggle`}
+            variant={channel.status === "connected" ? "outline" : "default"}
+            className="w-full"
+            onClick={() =>
+              patch.mutate({ status: channel.status === "connected" ? "disconnected" : "connected" })
+            }
+            disabled={patch.isPending}
+          >
+            {channel.status === "connected" ? t("channels.disconnect") : t("channels.connect")}
+          </Button>
+        )}
 
         {configField && (
           <div className="space-y-1.5">

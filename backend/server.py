@@ -79,6 +79,7 @@ from routers.store import router as store_router
 from routers.room import router as room_router
 from routers.system import router as system_router
 from routers.tasks import router as tasks_router
+from routers.visual import router as visual_router
 from routers.zero import router as zero_router
 
 api_router.include_router(agents_router)
@@ -92,6 +93,7 @@ api_router.include_router(store_router)
 api_router.include_router(room_router)
 api_router.include_router(system_router)
 api_router.include_router(tasks_router)
+api_router.include_router(visual_router)
 api_router.include_router(zero_router)
 
 app.add_middleware(

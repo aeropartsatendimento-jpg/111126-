@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { MotionConfig } from "motion/react";
-import { Brain, FolderKanban, Orbit, Globe, Languages, LayoutDashboard, ListChecks, MessagesSquare, Moon, PhoneCall, Store, Sun } from "lucide-react";
+import { Brain, FolderKanban, Orbit, Globe, Languages, LayoutDashboard, ListChecks, MessagesSquare, Monitor, Moon, PhoneCall, Store, Sun } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 
 import { apiGet } from "@/lib/api";
@@ -19,6 +19,7 @@ const NAV = [
   { to: "/projetos", key: "nav.projects", icon: FolderKanban, tid: "nav-projects", end: false },
   { to: "/tarefas", key: "nav.tasks", icon: ListChecks, tid: "nav-tasks", end: false },
   { to: "/zero", key: "nav.zero", icon: PhoneCall, tid: "nav-zero", end: false },
+  { to: "/navegador", key: "nav.visual", icon: Monitor, tid: "nav-visual", end: false },
   { to: "/memoria", key: "nav.memory", icon: Brain, tid: "nav-memory", end: false },
   { to: "/loja", key: "nav.store", icon: Store, tid: "nav-store", end: false },
   { to: "/canais", key: "nav.channels", icon: Globe, tid: "nav-channels", end: false },

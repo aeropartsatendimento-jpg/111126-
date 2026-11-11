@@ -35,6 +35,7 @@
 | Canais | `[x]` | Cinco canais seed e painel Internet verificados na UI e API |
 | Busca web | `[x]` | Busca e fallback vazio seguro verificados sem quebra da página |
 | Linha Direta/voz | `[~]` | Implementada; voz real depende de navegador compatível e teste manual |
+| Navegador Visual simulado | `[x]` | URL, objetivo, quatro etapas, persistência e publicação na Sala validados 5/5 |
 | Integrações reais | `[!]` | Aguardam URLs, contas, tokens e decisões listadas na seção 6 |
 
 ### Última validação registrada
@@ -103,6 +104,17 @@
 - [x] Restaurar `backend/.env` mínimo para MongoDB local e CORS.
 - [x] Garantir que `app.include_router(api_router)` seja a última montagem do backend.
 - [x] Validar APIs, tipos e jornada de missão no navegador.
+
+### C07 — Navegador Visual simulado
+
+- [x] Criar contratos e coleção `visual_missions` com índices de id, data e status.
+- [x] Criar URL `/navegador` com formulário, histórico persistido e timeline de quatro etapas.
+- [x] Garantir que nenhuma requisição seja feita ao endereço informado.
+- [x] Rotular toda a jornada e o resultado como **MODO SIMULADO**.
+- [x] Publicar a entrega simulada na Sala Compartilhada.
+- [x] Validar API, erro de URL, persistência, ausência de acesso ao alvo e jornada completa no navegador.
+
+Evidência: `test_reports/iteration_3.json` — 5/5 critérios do Navegador aprovados; suíte backend 15/15.
 
 ## 4. P0 — desbloqueio concluído
 

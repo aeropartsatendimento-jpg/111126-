@@ -7,8 +7,9 @@ keep the two in sync in the same edit (nothing infers across the boundary).
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 def new_id() -> str:
@@ -107,6 +108,44 @@ class Channel(BaseModel):
 class ChannelUpdate(BaseModel):
     status: Optional[str] = None
     config: Optional[dict[str, str]] = None
+
+
+class VisualMissionStep(BaseModel):
+    key: str
+    label: str
+    detail: str = ""
+    status: str = "pending"  # pending | completed
+
+
+class VisualMission(BaseModel):
+    id: str = Field(default_factory=new_id)
+    url: str
+    objective: str
+    status: str = "queued"  # queued | running | completed | failed
+    mode: str = "simulated"
+    steps: list[VisualMissionStep] = Field(default_factory=list)
+    result: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class VisualMissionCreate(BaseModel):
+    url: str = Field(min_length=8, max_length=2048)
+    objective: str = Field(min_length=3, max_length=1000)
+
+    @field_validator("url")
+    @classmethod
+    def validate_http_url(cls, value: str) -> str:
+        clean = value.strip()
+        parsed = urlparse(clean)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("url must start with http:// or https:// and include a host")
+        return clean
+
+    @field_validator("objective")
+    @classmethod
+    def trim_objective(cls, value: str) -> str:
+        return value.strip()
 
 
 class SearchCreate(BaseModel):

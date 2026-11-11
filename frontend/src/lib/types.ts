@@ -72,6 +72,25 @@ export interface Channel {
   updated_at: string;
 }
 
+export interface VisualMissionStep {
+  key: string;
+  label: string;
+  detail: string;
+  status: string; // pending | completed
+}
+
+export interface VisualMission {
+  id: string;
+  url: string;
+  objective: string;
+  status: string; // queued | running | completed | failed
+  mode: string; // simulated
+  steps: VisualMissionStep[];
+  result: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SearchHit {
   title: string;
   url: string;

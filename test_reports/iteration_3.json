@@ -1,0 +1,72 @@
+{
+  "iteration": 3,
+  "summary": "New feature: Navegador Visual simulado (visual browser mock). 5/5 acceptance criteria covered with 1 backend test file (3 assertions-sets) and 4 browser checks (incl. 1 run against the public preview URL). All 5 checks passed; backend suite 15/15 green overall.",
+  "passed": 5,
+  "failed": 0,
+  "flaky": 0,
+  "blocked": 0,
+  "test_error": 0,
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "O Navegador Visual simulado é acessível pelo QG",
+      "name": "visual-navigator-accessible",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Clicked nav-visual menu item -> /navegador renders visual-browser-title + visual-mode-badge; also from /canais, channel-visual-open-simulated link opens the same page."
+    },
+    {
+      "criterion": "O Navegador Visual simulado é acessível pelo QG",
+      "name": "visual-navigator-accessible-preview",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran same flow against public preview URL https://pick-up-here-39--8eq3ub01.preview.emergentagent.com — nav-visual opens /navegador with mode badge visible, no auth gate."
+    },
+    {
+      "criterion": "Uma missão visual válida percorre quatro etapas",
+      "name": "visual-mission-full-flow",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Filled https://example.com/tscheck-visual-<ts> + objective, clicked run; visual-steps-list rendered exactly 4 steps, status reached 'completed' (concluída), visual-result-copy contains MODO SIMULADO; mission persisted in history after page reload."
+    },
+    {
+      "criterion": "Uma missão visual válida percorre quatro etapas",
+      "name": "test_tscheck_visual_mission.py::test_visual_mission_runs_four_steps_and_completes",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/visual/missions 200 with 4 steps and mode=simulated; polled GET /api/visual/missions/{id} until status=completed with all 4 steps completed and result containing 'MODO SIMULADO'; GET by id after is stable (persisted)."
+    },
+    {
+      "criterion": "A simulação nunca se apresenta como navegação real",
+      "name": "visual-mission-full-flow",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Same run: visual-simulation-warning banner visible before dispatch, visual-mode-badge shows MODO SIMULADO, result copy explicitly states MODO SIMULADO and 'Nenhum site foi aberto'. Backend routers/visual.py code review confirms no outbound HTTP request is made to mission['url'] (urlparse only used to extract host for copy)."
+    },
+    {
+      "criterion": "A entrega visual é publicada na Sala",
+      "name": "visual-delivery-published-room",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "After mission completed, navigated to /sala and found a room-message-* bubble containing both 'Navegador Visual' and 'MODO SIMULADO' for the just-created objective."
+    },
+    {
+      "criterion": "A entrega visual é publicada na Sala",
+      "name": "test_tscheck_visual_mission.py::test_visual_mission_runs_four_steps_and_completes",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "GET /api/room/messages after completion contains a message whose content includes 'Navegador Visual' and 'MODO SIMULADO'."
+    },
+    {
+      "criterion": "Histórico e contratos da API são consistentes",
+      "name": "test_tscheck_visual_mission.py::test_visual_mission_invalid_url_rejected + test_visual_mission_missing_id_404",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/visual/missions with url='not-a-url' -> 422; GET /api/visual/missions/tscheck-visual-does-not-exist -> 404; mission created earlier persists via GET by id."
+    }
+  ],
+  "bugs": [],
+  "action_items": [
+    "Matrix had 5 criteria; produced 8 checks[] entries total (1 backend test file covers 3 of the criteria via its 3 test functions, listed as separate rows for traceability) plus 1 extra browser check run against the public preview URL per instructions."
+  ]
+}

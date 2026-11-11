@@ -30,6 +30,9 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 4. **Linha direta com voz**: `/zero` — microfone via Web Speech API (STT pt-BR, botão mic) e Zero
    fala novas respostas via speechSynthesis (toggle de voz). Fallbacks silenciosos quando a API
    não existe no navegador.
+5. **Navegador Visual simulado**: `/navegador` recebe URL + objetivo, persiste uma missão visual,
+   exibe quatro etapas e publica a entrega na Sala. É sempre rotulado **MODO SIMULADO** e não faz
+   requisição ao site alvo, não abre login e não usa cookies/contas.
 
 ## Projetos, contas e entregas verificáveis (rodada 3)
 - **Projetos** (`/projetos`): ficha de retomada = objetivo atual, última entrega verificada, em andamento,
@@ -61,19 +64,20 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - `GET/POST /room/messages` · `GET /zero/messages` `POST /zero/chat`
 - `GET /briefing` · `GET/PATCH /briefing/settings` (auto/hour/city) · `POST /briefing/run`
 - `GET /channels` `PATCH /channels/{id}` · `POST /channels/internet/search` (**busca real** DuckDuckGo HTML, sem chave, [] em falha)
+- `GET/POST /visual/missions` · `GET /visual/missions/{id}` (simulação persistida, sem acesso ao alvo)
 - Coleções: agents, missions, tasks, room_messages, zero_messages, channels, briefings, settings (+status_checks) — INDEXES em `lib/db.py`.
 
 ## Canais (página /canais) — status atual
 - **whatsapp**: WhatsApp Web no navegador do Zero na VPS (SEM provedor externo, decisão do Chefe) — placeholder configurável (phone).
 - **facebook**: atendimento/publicações da loja — placeholder (page_url).
 - **internet**: conectado, busca real funcionando.
-- **visual**: Navegador Visual — mapeia para o MCP de contas (/index, zero-private-room): Zero abre a
-  conversa certa nas contas salvas e traz o resultado — placeholder.
+- **visual**: Navegador Visual simulado funcional no QG; a conexão real futura mapeará o MCP de contas
+  (/index, zero-private-room). Nenhuma missão atual abre site ou conta real.
 - **mcp**: conectar aos MCPs da VPS (zero-mcp, private-room) — aguarda URL do Chefe — placeholder.
 - Painel "Infraestrutura do Chefe" (estático): VPS, MCP, SSH, sala tmux — já existem.
 
 ## Frontend
-- Rotas: `/` Cockpit, `/sala`, `/projetos`, `/tarefas`, `/zero` (voz/ligação), `/loja`, `/canais` (inclui card do Servidor MCP).
+- Rotas: `/` Cockpit, `/sala`, `/projetos`, `/tarefas`, `/zero` (voz/ligação), `/navegador` (simulado), `/loja`, `/canais` (inclui card do Servidor MCP).
 - i18n PT/EN (`src/lib/i18n.tsx`, localStorage `qgzero.lang`, default pt); tema claro default + dark (next-themes).
 - Fontes: Outfit / Plus Jakarta Sans / JetBrains Mono. Polling react-query 2–10s. `motion` nas mensagens.
 - TS mirrors de todos os Pydantic models em `src/lib/types.ts`.
