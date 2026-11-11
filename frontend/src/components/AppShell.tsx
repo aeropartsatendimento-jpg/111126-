@@ -3,7 +3,6 @@ import { NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { MotionConfig } from "motion/react";
-import { UserButton } from "@clerk/react";
 import { Brain, FolderKanban, Orbit, Globe, Languages, LayoutDashboard, ListChecks, MessagesSquare, Moon, PhoneCall, Store, Sun } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -155,20 +154,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="space-y-3">
             <BrainPill />
-            <div className="flex items-center gap-2">
-              <Toggles />
-              <span data-testid="user-menu"><UserButton /></span>
-            </div>
+            <Toggles />
           </div>
         </aside>
 
         {/* Mobile top bar */}
         <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-white/90 px-3 backdrop-blur lg:hidden">
           <BrandMark compact />
-          <div className="flex items-center gap-2">
-            <Toggles />
-            <UserButton />
-          </div>
+          <Toggles />
         </header>
 
         {/* Main content */}

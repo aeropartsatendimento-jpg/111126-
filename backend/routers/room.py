@@ -1,11 +1,9 @@
 """Shared room — the all-hands stream where the squad talks."""
 
-import asyncio
-
 from fastapi import APIRouter
 
 from lib.db import db
-from lib.orchestrator import zero_reply_in_room
+from lib.orchestrator import spawn, zero_reply_in_room
 from models.models import RoomMessage, RoomMessageCreate, aware
 
 router = APIRouter()
@@ -22,5 +20,5 @@ async def list_messages():
 async def post_message(input: RoomMessageCreate):
     message = RoomMessage(sender_key="user", kind="chat", content=input.content)
     await db.room_messages.insert_one(message.model_dump())
-    asyncio.create_task(zero_reply_in_room())
+    spawn(zero_reply_in_room())
     return message

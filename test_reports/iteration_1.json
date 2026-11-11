@@ -1,0 +1,41 @@
+{
+  "iteration": 1,
+  "summary": "8/8 acceptance criteria exercised with backend tests + browser checks. 1 criterion (channels/search) blocked by missing seed data (agents, channels, store seed items, seed projects all empty in DB) — not a code defect in routes, but the app ships unusable until `python backend/seed.py` is run.",
+  "passed": 13,
+  "failed": 2,
+  "flaky": 0,
+  "blocked": 0,
+  "test_error": 0,
+  "retest_needed": true,
+  "checks": [
+    {"criterion": "O QG abre diretamente sem autenticação", "name": "cockpit-loads-without-auth", "lane": "browser", "status": "passed", "evidence": "Navigated to / (localhost:3000): cockpit-title and mission-input visible with no redirect to login; clicked tasks-preview-link -> tasks-title visible."},
+    {"criterion": "O QG abre diretamente sem autenticação", "name": "cockpit-loads-without-auth-preview", "lane": "browser", "status": "passed", "evidence": "Same flow verified via public preview URL https://pick-up-here-39--8eq3ub01.preview.emergentagent.com — cockpit-title and mission-input visible, no auth gate."},
+    {"criterion": "Uma missão pode ser enviada pelo Cockpit", "name": "mission-create-flow", "lane": "browser", "status": "passed", "evidence": "Filled mission-input, clicked dispatch-mission-btn, input cleared (success toast), Room reachable afterwards."},
+    {"criterion": "Uma missão pode ser enviada pelo Cockpit", "name": "test_tscheck_mission_create.py", "lane": "backend", "status": "passed", "evidence": "POST /api/missions 200 -> mission created; polled GET /api/tasks?mission_id=<id> until tasks appeared (status in queued/working/review/verified/...); GET /api/room/messages contains an entry with mission_id set. POST /api/missions {text:'a'} -> 422."},
+    {"criterion": "Entregas em revisão podem ser aprovadas ou devolvidas", "name": "task-review-approve-reject", "lane": "browser", "status": "passed", "evidence": "Created mission via API, polled task to 'review' status, opened Tarefas page, filter 'review' showed task-item, clicked task-approve -> task-status left 'review'; cross-checked GET /api/tasks?mission_id=... shows status=verified."},
+    {"criterion": "Entregas em revisão podem ser aprovadas ou devolvidas", "name": "test_tscheck_task_review.py", "lane": "backend", "status": "passed", "evidence": "PATCH /api/tasks/{id}/review {approve:true,note:'tscheck-ok'} -> 200, status='verified', review_note='tscheck-ok'. PATCH on a non-review task -> 409."},
+    {"criterion": "A Sala aceita mensagens do Chefe e recebe resposta do Zero", "name": "room-message-zero-reply", "lane": "browser", "status": "passed", "evidence": "Typed tscheck-room-<ts> message in /sala, pressed Enter, message appeared; polled GET /api/room/messages until a 'zero' sender message followed it (~5-10s), then asserted room-stream text contains 'Zero' without any page reload."},
+    {"criterion": "A rotina da manhã pode ser executada manualmente", "name": "briefing-run-now", "lane": "browser", "status": "passed", "evidence": "Clicked briefing-run-btn on Cockpit; briefing-latest card appeared with a YYYY-MM-DD date; cross-checked GET /api/room/messages contains a kind='briefing' entry."},
+    {"criterion": "A rotina da manhã pode ser executada manualmente", "name": "test_tscheck_briefing_run.py", "lane": "backend", "status": "passed", "evidence": "POST /api/briefing/run -> 200 with non-empty day/content; GET /api/room/messages includes a kind='briefing' message."},
+    {"criterion": "Projetos podem ser retomados e editados", "name": "project-edit-and-resume", "lane": "browser", "status": "passed", "evidence": "Created tscheck-project-ui-<ts> via project-new-input/project-create-btn, edited next_step via project-edit-btn/project-input-next_step/project-save-btn (field persisted and re-rendered), clicked project-resume-btn successfully (button re-enabled, no error toast)."},
+    {"criterion": "Projetos podem ser retomados e editados", "name": "test_tscheck_project_resume.py", "lane": "backend", "status": "passed", "evidence": "POST /api/projects -> 200; PATCH /api/projects/{id} persists in_progress/next_step/blocker (verified via GET); POST /api/projects/{id}/resume -> 200 Mission with project_id matching. PATCH with invalid status -> 422."},
+    {"criterion": "O painel AeroPartz permite gerenciar itens", "name": "store-item-manage", "lane": "browser", "status": "passed", "evidence": "Created tscheck-item-<ts> via store-stock-title-input/add-btn, found via API, toggled status (critical->ok, confirmed via API), deleted via store-delete -> row removed from DOM and from GET /api/store/items."},
+    {"criterion": "O painel AeroPartz permite gerenciar itens", "name": "test_tscheck_store_items.py", "lane": "backend", "status": "passed", "evidence": "POST /api/store/items -> 200 is_sample=false; PATCH status critical -> 200; DELETE -> 204, item absent from subsequent GET. Invalid kind/status combo -> 422."},
+    {"criterion": "Canais e busca degradam com segurança", "name": "channels-search-safe", "lane": "browser", "status": "failed", "evidence": "Navigated to /canais: zero channel-card-* elements rendered (screenshot: channels-search-safe-failure.png) because GET /api/channels returns [] (curl http://localhost:8001/api/channels -> 200 '[]', confirming backend is healthy but has no seeded channel rows and there is no POST /channels endpoint to create one). The search panel lives inside the 'internet' ChannelCard, so it cannot be reached at all."},
+    {"criterion": "Canais e busca degradam com segurança", "name": "test_tscheck_channel_search.py", "lane": "backend", "status": "failed", "evidence": "GET /api/channels -> 200 '[]' (expected seeded whatsapp/facebook/internet channels per SPEC.md). test_channel_config_persists and test_channel_update_invalid_status_rejected fail because there is no channel row to PATCH. test_internet_search_degrades_safely (not dependent on seed) passed: POST /api/channels/internet/search -> 200, results=[] (DuckDuckGo search returned empty/failed gracefully per lib.search warning in backend logs — 'web_search failed')."}
+  ],
+  "bugs": [
+    {
+      "severity": "high",
+      "title": "Database has no seed data (agents, channels, store_items, projects all empty) — blocks Channels/Canais criterion end-to-end",
+      "evidence": "curl http://localhost:8001/api/channels -> 200 '[]'; curl http://localhost:8001/api/agents -> 200 '[]'; mongo collections exist but are empty. SPEC.md documents expected seeds (5 agents, whatsapp/facebook/internet/visual/mcp channels, 4 is_sample store items, seed-project-aeropartz, seed-project-luna) and 'python backend/seed.py' to populate them (idempotent upsert, never run automatically on startup — no call to seed in server.py). Because /channels has no POST endpoint, the Canais page and its internet-search panel (nested inside the ChannelCard) cannot be reached or tested at all while the collection is empty.",
+      "affected_checks": ["channels-search-safe", "test_tscheck_channel_search.py"]
+    }
+  ],
+  "action_items": [
+    {
+      "severity": "high",
+      "item": "seed_data_missing: run `cd /app/backend && python seed.py` (documented in SPEC.md as idempotent/non-destructive) to populate agents, channels, store_items and seed projects before the Canais/Channels criterion (and ideally the Cockpit hierarchy/store preview cards, which currently render with no data) can be fully verified."
+    }
+  ]
+}

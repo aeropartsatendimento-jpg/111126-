@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager, suppress
-from fastapi import FastAPI, APIRouter, Depends
+from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
@@ -71,8 +71,6 @@ async def get_status_checks():
 from routers.agents import router as agents_router
 from routers.briefing import router as briefing_router
 from routers.channels import router as channels_router
-from clerk_auth import clerk_router
-from routers.owners import require_owner, router as owners_router
 from routers.memories import router as memories_router
 from routers.mcp import router as mcp_router
 from routers.missions import router as missions_router
@@ -83,23 +81,18 @@ from routers.system import router as system_router
 from routers.tasks import router as tasks_router
 from routers.zero import router as zero_router
 
-api_router.include_router(agents_router, dependencies=[Depends(require_owner)])
-api_router.include_router(briefing_router, dependencies=[Depends(require_owner)])
-api_router.include_router(channels_router, dependencies=[Depends(require_owner)])
+api_router.include_router(agents_router)
+api_router.include_router(briefing_router)
+api_router.include_router(channels_router)
 api_router.include_router(mcp_router)
-api_router.include_router(owners_router)
-api_router.include_router(memories_router, dependencies=[Depends(require_owner)])
-api_router.include_router(missions_router, dependencies=[Depends(require_owner)])
-api_router.include_router(projects_router, dependencies=[Depends(require_owner)])
-api_router.include_router(store_router, dependencies=[Depends(require_owner)])
-api_router.include_router(room_router, dependencies=[Depends(require_owner)])
-api_router.include_router(system_router, dependencies=[Depends(require_owner)])
-api_router.include_router(tasks_router, dependencies=[Depends(require_owner)])
-api_router.include_router(zero_router, dependencies=[Depends(require_owner)])
-
-# Include the router in the main app
-app.include_router(api_router)
-app.include_router(clerk_router)  # /api/clerk/config and /api/__clerk/*
+api_router.include_router(memories_router)
+api_router.include_router(missions_router)
+api_router.include_router(projects_router)
+api_router.include_router(store_router)
+api_router.include_router(room_router)
+api_router.include_router(system_router)
+api_router.include_router(tasks_router)
+api_router.include_router(zero_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -115,3 +108,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Keep this final: every feature route above is folded into the /api router first.
+app.include_router(api_router)

@@ -20,7 +20,7 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 
 ## Fluxos
 1. **Missão**: `POST /api/missions` → `run_mission` (background): Zero planeja (JSON estrito, ≤4 tasks)
-   → mensagem `delegation` na sala → cada task `queued→working→done` com resultado do LLM do agente
+   → mensagem `delegation` na sala → cada task `queued→working→review` com resultado do LLM do agente
    (mensagem `chat`) → `system/summary` fecha. Fallback simulado marcado "(modo simulado)".
 2. **Rotina da Manhã**: briefing diário com clima de **busca real** + checklist AeroPartz (caixa,
    estoque crítico, pedidos, cupons), prioridades e lembretes. Scheduler em `lib/scheduler.py`
@@ -79,8 +79,13 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - TS mirrors de todos os Pydantic models em `src/lib/types.ts`.
 
 ## Autenticação
-Nenhuma (app pessoal aberto). `EMERGENT_LLM_KEY` gerencia o cérebro em nuvem (backend/.env);
+Nenhuma (app pessoal aberto, sem tela de login nem bloqueio de API). `EMERGENT_LLM_KEY` gerencia o cérebro em nuvem (backend/.env);
 sem chave/serviço fora → modo simulado automático.
+
+## Estabilização atual
+- A prévia da Sala mostra as mensagens mais recentes, não as primeiras do histórico.
+- Respostas assíncronas da Sala e da Linha Direta ficam referenciadas até terminarem.
+- Briefing manual usa a data de `America/Sao_Paulo`, igual à rotina automática.
 
 ## Para re-semeadar
 `cd /app/backend && python seed.py` (upsert por key; não derruba coleções).

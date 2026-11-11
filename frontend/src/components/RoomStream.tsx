@@ -44,7 +44,7 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
 
   const all = messages ?? [];
   const filtered = filter === "all" ? all : all.filter((m) => m.sender_key === filter);
-  const shown = full ? filtered : filtered.slice(0, limit);
+  const shown = full ? filtered : filtered.slice(-limit);
   const thinking = all.length > 0 && all[all.length - 1].sender_key === "user";
 
   useEffect(() => {

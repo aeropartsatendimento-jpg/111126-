@@ -18,18 +18,9 @@ export class ApiError extends Error {
 
 type JsonBody = unknown;
 
-// Clerk session token getter, registered once by <AuthGate> (lib-level so every apiX call sends it).
-let tokenGetter: (() => Promise<string | null>) | null = null;
-export function setTokenGetter(fn: (() => Promise<string | null>) | null): void {
-  tokenGetter = fn;
-}
-
 async function request<T>(method: string, path: string, body?: JsonBody): Promise<T> {
-  // Clerk session token (Emergent-managed auth) rides as a bearer header.
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const token = tokenGetter ? await tokenGetter() : null;
-  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,

@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime, timezone
 
 from lib.brain import llm_json, llm_text
+from lib.dates import today_iso
 from lib.db import db
 from lib.search import web_search
 
@@ -376,7 +377,7 @@ async def run_briefing(settings: dict, day: str | None = None) -> dict:
     if reply is None:
         reply = "[modo simulado] Bom dia, Chefe. Sem nuvem agora: confira o painel da loja e os bloqueios dos projetos."
 
-    doc = {"id": _new_id(), "day": day or _now().strftime("%Y-%m-%d"), "city": city, "content": reply, "created_at": _now()}
+    doc = {"id": _new_id(), "day": day or today_iso("America/Sao_Paulo"), "city": city, "content": reply, "created_at": _now()}
     await db.briefings.insert_one(dict(doc))
     await _post_room("zero", "briefing", f"🌅 Briefing da manhã ({doc['day']} — {city}):\n\n{reply}")
     return doc

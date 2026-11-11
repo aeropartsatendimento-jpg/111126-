@@ -144,16 +144,6 @@ export interface McpInfo {
   tools: string[];
 }
 
-export interface Me {
-  user_id: string;
-  emails: string[];
-  is_owner: boolean;
-}
-
-export interface Owner {
-  email: string;
-}
-
 export interface Memory {
   id: string;
   kind: string; // decisao_chefe | fato_verificado | proposta | antiga

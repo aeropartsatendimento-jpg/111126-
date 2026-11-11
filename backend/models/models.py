@@ -243,20 +243,6 @@ class McpInfo(BaseModel):
     tools: list[str]
 
 
-class MeOut(BaseModel):
-    user_id: str
-    emails: list[str]
-    is_owner: bool
-
-
-class OwnerIn(BaseModel):
-    email: str = Field(min_length=5, max_length=200, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-
-
-class OwnerOut(BaseModel):
-    email: str
-
-
 class Memory(BaseModel):
     id: str = Field(default_factory=new_id)
     kind: str  # decisao_chefe | fato_verificado | proposta | antiga

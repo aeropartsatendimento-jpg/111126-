@@ -1,11 +1,9 @@
 """Zero's dedicated direct line — 1-a-1 chat with intent (explicando/propondo/executando)."""
 
-import asyncio
-
 from fastapi import APIRouter, HTTPException
 
 from lib.db import db
-from lib.orchestrator import remember, start_mission, zero_direct_reply
+from lib.orchestrator import remember, spawn, start_mission, zero_direct_reply
 from models.models import DirectMessage, ZeroChatCreate, aware
 
 router = APIRouter()
@@ -26,7 +24,7 @@ async def list_messages():
 async def send_chat(input: ZeroChatCreate):
     message = DirectMessage(role="user", content=input.content)
     await db.zero_messages.insert_one(message.model_dump())
-    asyncio.create_task(zero_direct_reply())
+    spawn(zero_direct_reply())
     return message
 
 
