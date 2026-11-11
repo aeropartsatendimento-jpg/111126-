@@ -31,6 +31,30 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
    fala novas respostas via speechSynthesis (toggle de voz). Fallbacks silenciosos quando a API
    não existe no navegador.
 
+## Projetos, contas e entregas verificáveis (rodada 3)
+- **Projetos** (`/projetos`): ficha de retomada = objetivo atual, última entrega verificada, em andamento,
+  bloqueio/decisão, próximo passo. "Continuar de onde paramos" → `POST /projects/{id}/resume` cria missão com
+  a ficha + resultados recentes como contexto. Ao fim da missão o Zero atualiza in_progress, next_step e blocker
+  (decision_needed do plano). Seed: `seed-project-aeropartz`, `seed-project-luna` (bloqueios vindos da auditoria).
+- **Entregas**: tarefas terminam em `review` (resposta de agente ≠ entrega). Chefe aprova/devolve:
+  `PATCH /tasks/{id}/review {approve, note}` → `verified`/`rejected` (409 se não está em review). Aprovar grava
+  `last_verified` no projeto. Status: queued|working|review|verified|rejected|failed.
+- **Contas salvas**: `GET/POST /accounts`, `PATCH/DELETE /accounts/{id}` — status available|busy|offline|unverified
+  (seed: 5 contas, todas "unverified" — disponibilidade nunca verificada).
+- **Intenção do Zero** (linha direta): cada resposta é explicando|propondo|executando (JSON do LLM). executando →
+  dispara a missão na hora (com project_id se reconhecer o projeto); propondo → botão "Aprovar e executar"
+  (`POST /zero/messages/{id}/execute`, 409 se já executada ou não é proposta).
+- **Painel AeroPartz** (`/loja`): `GET/POST /store/items`, `PATCH/DELETE /store/items/{id}`; kind stock(critical|ok),
+  order(open|done), coupon(active|expired). Seed com 4 itens `is_sample=true` (marcados "Exemplo"). Itens
+  críticos/abertos/ativos entram no contexto do plano, da linha direta e do briefing. Conexão direta com a loja: futura.
+- **Servidor MCP do QG**: `POST /api/mcp` (JSON-RPC, Streamable HTTP sem estado, respostas JSON) com
+  `Authorization: Bearer $QG_MCP_TOKEN`. Sem token configurado → 503; token errado → 401. `GET /api/mcp/info`
+  (público): path, token_configured, ferramentas. Ferramentas: list_projects, get_project, create_mission,
+  resume_project, get_mission, list_tasks, read_room, post_room_message, list_accounts, store_overview.
+- **Voz**: linha direta tem "Modo ligação" (escuta → envia sozinho → Zero fala → volta a escutar; silêncio reabre
+  o microfone). Briefing falado: o briefing mais novo é lido uma vez no primeiro toque após abrir o app
+  (localStorage `qgzero.spokenBriefing`) + botão "Ouvir" no card. Web Speech API (Chrome).
+
 ## Endpoints (todos em api_router, prefixo /api)
 - `GET /agents` · `GET /system` (pill: cloud|simulated)
 - `POST/GET /missions` · `GET /tasks?agent_key=&status=&mission_id=`
@@ -49,7 +73,7 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - Painel "Infraestrutura do Chefe" (estático): VPS, MCP, SSH, sala tmux — já existem.
 
 ## Frontend
-- Rotas: `/` Cockpit (hierarquia + missões + briefing + prévias), `/sala`, `/tarefas`, `/zero` (voz), `/canais`.
+- Rotas: `/` Cockpit, `/sala`, `/projetos`, `/tarefas`, `/zero` (voz/ligação), `/loja`, `/canais` (inclui card do Servidor MCP).
 - i18n PT/EN (`src/lib/i18n.tsx`, localStorage `qgzero.lang`, default pt); tema claro default + dark (next-themes).
 - Fontes: Outfit / Plus Jakarta Sans / JetBrains Mono. Polling react-query 2–10s. `motion` nas mensagens.
 - TS mirrors de todos os Pydantic models em `src/lib/types.ts`.

@@ -71,7 +71,10 @@ async def get_status_checks():
 from routers.agents import router as agents_router
 from routers.briefing import router as briefing_router
 from routers.channels import router as channels_router
+from routers.mcp import router as mcp_router
 from routers.missions import router as missions_router
+from routers.projects import router as projects_router
+from routers.store import router as store_router
 from routers.room import router as room_router
 from routers.system import router as system_router
 from routers.tasks import router as tasks_router
@@ -80,7 +83,10 @@ from routers.zero import router as zero_router
 api_router.include_router(agents_router)
 api_router.include_router(briefing_router)
 api_router.include_router(channels_router)
+api_router.include_router(mcp_router)
 api_router.include_router(missions_router)
+api_router.include_router(projects_router)
+api_router.include_router(store_router)
 api_router.include_router(room_router)
 api_router.include_router(system_router)
 api_router.include_router(tasks_router)

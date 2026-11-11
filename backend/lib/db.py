@@ -32,6 +32,7 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("status", ASCENDING), ("created_at", DESCENDING)], name="status_created"),
         IndexModel([("agent_key", ASCENDING), ("status", ASCENDING)], name="agent_status"),
         IndexModel([("mission_id", ASCENDING), ("created_at", ASCENDING)], name="mission_created"),
+        IndexModel([("project_id", ASCENDING), ("updated_at", DESCENDING)], name="project_updated"),
     ],
     "room_messages": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
@@ -48,6 +49,15 @@ INDEXES: dict[str, list[IndexModel]] = {
     "briefings": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("created_at", DESCENDING)], name="created_desc"),
+    ],
+    "projects": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("updated_at", DESCENDING)], name="updated_desc"),
+    ],
+    "accounts": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    "store_items": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("kind", ASCENDING), ("status", ASCENDING)], name="kind_status"),
     ],
     "settings": [
         IndexModel([("key", ASCENDING)], name="key", unique=True),

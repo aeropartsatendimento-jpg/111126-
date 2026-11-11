@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import type { Channel, SearchResponse } from "@/lib/types";
+import type { Channel, McpInfo, SearchResponse } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -175,6 +175,49 @@ function ChannelCard({ channel }: { channel: Channel }) {
   );
 }
 
+function McpServerCard() {
+  const { t } = useI18n();
+  const { data } = useQuery({ queryKey: ["mcp-info"], queryFn: () => apiGet<McpInfo>("/mcp/info"), refetchInterval: 15000 });
+  const url = `${window.location.origin}${data?.path ?? "/api/mcp"}`;
+  return (
+    <Card data-testid="mcp-server-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex flex-wrap items-center gap-2 font-heading text-base">
+          {t("mcp.title")}
+          <span
+            data-testid="mcp-token-status"
+            className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+              data?.token_configured ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}
+          >
+            {data?.token_configured ? t("mcp.tokenOn") : t("mcp.tokenOff")}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <p className="text-xs font-semibold text-slate-500">{t("mcp.endpoint")}</p>
+          <code className="mt-1 block break-all rounded-md bg-slate-900 px-3 py-2 font-mono text-xs text-sky-300" data-testid="mcp-endpoint">
+            POST {url}
+            <br />
+            Authorization: Bearer ••••••
+          </code>
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-slate-500">{t("mcp.tools")}</p>
+          <div className="flex flex-wrap gap-1.5" data-testid="mcp-tools">
+            {(data?.tools ?? []).map((tool) => (
+              <span key={tool} className="rounded-md border bg-white px-2 py-0.5 font-mono text-[11px] text-slate-700">
+                {tool}
+              </span>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function InfraCard() {
   const { t } = useI18n();
   const items: Array<{ key: string; label: string }> = [
@@ -225,6 +268,7 @@ export default function Channels() {
         ))}
       </div>
 
+      <McpServerCard />
       <InfraCard />
     </div>
   );

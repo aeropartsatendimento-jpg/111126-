@@ -41,11 +41,13 @@ class Mission(BaseModel):
     text: str
     status: str  # planning | delegating | completed | failed
     plan_intro: Optional[str] = None
+    project_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class MissionCreate(BaseModel):
     text: str = Field(min_length=3, max_length=2000)
+    project_id: Optional[str] = None
 
 
 class Task(BaseModel):
@@ -55,8 +57,10 @@ class Task(BaseModel):
     agent_key: str
     title: str
     detail: str = ""
-    status: str  # queued | working | done | failed
+    status: str  # queued | working | review | verified | rejected | failed
     result: Optional[str] = None
+    project_id: Optional[str] = None
+    review_note: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -78,6 +82,10 @@ class DirectMessage(BaseModel):
     id: str = Field(default_factory=new_id)
     role: str  # user | zero
     content: str
+    intent: str = ""  # explicando | propondo | executando (zero only)
+    proposal: Optional[str] = None  # mission text Zero proposes
+    project_id: Optional[str] = None
+    mission_id: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -141,3 +149,95 @@ class BriefingSettingsOut(BaseModel):
     auto: bool = True
     hour: int = 7
     city: str = "São Paulo"
+
+
+class TaskReview(BaseModel):
+    approve: bool
+    note: Optional[str] = Field(default=None, max_length=1000)
+
+
+class Project(BaseModel):
+    id: str = Field(default_factory=new_id)
+    name: str
+    objective: str = ""
+    status: str = "active"  # active | paused | done
+    in_progress: str = ""
+    blocker: str = ""  # bloqueio ou decisão necessária
+    next_step: str = ""
+    last_verified: str = ""  # última entrega verificada
+    last_verified_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProjectCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    objective: str = Field(default="", max_length=2000)
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    objective: Optional[str] = Field(default=None, max_length=2000)
+    status: Optional[str] = None
+    in_progress: Optional[str] = Field(default=None, max_length=2000)
+    blocker: Optional[str] = Field(default=None, max_length=2000)
+    next_step: Optional[str] = Field(default=None, max_length=2000)
+
+
+class Account(BaseModel):
+    id: str = Field(default_factory=new_id)
+    name: str  # nome amigável, ex: "Trabalho"
+    provider: str  # ex: ChatGPT Pro, Gemini web
+    status: str = "unverified"  # available | busy | offline | unverified
+    note: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AccountCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    provider: str = Field(min_length=1, max_length=80)
+    note: str = Field(default="", max_length=300)
+
+
+class AccountUpdate(BaseModel):
+    status: Optional[str] = None
+    note: Optional[str] = Field(default=None, max_length=300)
+
+
+class StoreItem(BaseModel):
+    id: str = Field(default_factory=new_id)
+    kind: str  # stock | order | coupon
+    title: str
+    detail: str = ""
+    value: str = ""  # qtd / valor / código
+    status: str  # stock: critical|ok · order: open|done · coupon: active|expired
+    is_sample: bool = False
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StoreItemCreate(BaseModel):
+    kind: str
+    title: str = Field(min_length=1, max_length=140)
+    detail: str = Field(default="", max_length=500)
+    value: str = Field(default="", max_length=60)
+    status: str
+
+
+class StoreItemUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=140)
+    detail: Optional[str] = Field(default=None, max_length=500)
+    value: Optional[str] = Field(default=None, max_length=60)
+    status: Optional[str] = None
+
+
+class McpRequest(BaseModel):
+    jsonrpc: str = "2.0"
+    id: Optional[int | str] = None
+    method: str
+    params: dict = Field(default_factory=dict)
+
+
+class McpInfo(BaseModel):
+    path: str
+    token_configured: bool
+    tools: list[str]

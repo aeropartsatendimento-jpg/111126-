@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Send } from "lucide-react";
+import { ArrowRight, Send, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { WORKER_ORDER } from "@/lib/agents";
 import { useI18n } from "@/lib/i18n";
-import type { Agent, Briefing, BriefingSettings, Channel, Mission, Task } from "@/lib/types";
+import { speak } from "@/lib/speech";
+import type { Agent, Briefing, BriefingSettings, Channel, Mission, Project, StoreItem, Task } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -107,9 +108,12 @@ function MissionPanel() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
+  const [projectId, setProjectId] = useState("none");
+  const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: () => apiGet<Project[]>("/projects") });
+  const projectName = (id: string) => (id === "none" ? t("projects.pick") : (projects ?? []).find((p) => p.id === id)?.name ?? id);
 
   const dispatch = useMutation({
-    mutationFn: (text: string) => apiPost<Mission>("/missions", { text }),
+    mutationFn: (text: string) => apiPost<Mission>("/missions", { text, project_id: projectId === "none" ? null : projectId }),
     onSuccess: () => {
       setDraft("");
       toast.success(t("mission.sent"));
@@ -133,6 +137,19 @@ function MissionPanel() {
           placeholder={t("mission.placeholder")}
           rows={3}
         />
+        <Select value={projectId} onValueChange={(v: string) => setProjectId(v)}>
+          <SelectTrigger className="w-full" data-testid="mission-project-select">
+            <SelectValue>{(v) => `📁 ${projectName(v as string)}`}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{t("projects.pick")}</SelectItem>
+            {(projects ?? []).map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="flex flex-wrap gap-1.5">
           {CHIPS.map((chip, i) => (
             <button
@@ -206,9 +223,17 @@ function BriefingCard() {
     <Card data-testid="briefing-card">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="font-heading text-base">{t("briefing.title")}</CardTitle>
-        <Button size="sm" data-testid="briefing-run-btn" disabled={run.isPending} onClick={() => run.mutate()}>
-          {run.isPending ? t("briefing.running") : t("briefing.run")}
-        </Button>
+        <div className="flex gap-1.5">
+          {latest && (
+            <Button size="sm" variant="outline" data-testid="briefing-listen-btn" onClick={() => speak(latest.content)}>
+              <Volume2 className="size-4" />
+              {t("briefing.listen")}
+            </Button>
+          )}
+          <Button size="sm" data-testid="briefing-run-btn" disabled={run.isPending} onClick={() => run.mutate()}>
+            {run.isPending ? t("briefing.running") : t("briefing.run")}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
@@ -267,14 +292,16 @@ function StatsRow() {
 
   const active = (missions ?? []).filter((m) => m.status === "planning" || m.status === "delegating").length;
   const queued = (tasks ?? []).filter((x) => x.status === "queued" || x.status === "working").length;
-  const done = (tasks ?? []).filter((x) => x.status === "done").length;
+  const done = (tasks ?? []).filter((x) => x.status === "verified").length;
+  const review = (tasks ?? []).filter((x) => x.status === "review").length;
 
   return (
-    <div className="grid grid-cols-3 gap-3" data-testid="stats-row">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="stats-row">
       {[
         { label: t("stats.active"), value: active, tid: "stat-active" },
         { label: t("stats.queued"), value: queued, tid: "stat-queued" },
-        { label: t("stats.done"), value: done, tid: "stat-done" },
+        { label: t("status.review"), value: review, tid: "stat-review" },
+        { label: t("status.verified"), value: done, tid: "stat-done" },
       ].map(({ label, value, tid }) => (
         <div key={tid} className="rounded-lg border bg-white p-3 text-center shadow-sm">
           <p className="font-heading text-2xl font-bold text-blue-600" data-testid={tid}>
@@ -310,6 +337,46 @@ function TasksPreview() {
             <StatusBadge status={task.status} />
           </div>
         ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StoreCard() {
+  const { t } = useI18n();
+  const { data: items } = useQuery({ queryKey: ["store"], queryFn: () => apiGet<StoreItem[]>("/store/items"), refetchInterval: 5000 });
+  const all = items ?? [];
+  const groups = [
+    { key: "stock", status: "critical", label: "store.stock", dot: "bg-red-500" },
+    { key: "order", status: "open", label: "store.order", dot: "bg-blue-500" },
+    { key: "coupon", status: "active", label: "store.coupon", dot: "bg-emerald-500" },
+  ];
+  return (
+    <Card data-testid="store-card">
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle className="font-heading text-base">{t("store.title")}</CardTitle>
+        <Link to="/loja" data-testid="store-preview-link" className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline">
+          {t("store.openFull")}
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {groups.map((g) => {
+          const hot = all.filter((i) => i.kind === g.key && i.status === g.status);
+          return (
+            <div key={g.key} data-testid={`store-group-${g.key}`}>
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                <span className={`size-2 rounded-full ${g.dot}`} />
+                {t(g.label)} · {t(`store.${g.status}`)} <span className="font-mono">({hot.length})</span>
+              </p>
+              {hot.slice(0, 3).map((i) => (
+                <p key={i.id} className="truncate pl-3.5 text-sm">
+                  {i.title} <span className="font-mono text-xs text-muted-foreground">{i.value}</span>
+                </p>
+              ))}
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
@@ -379,6 +446,7 @@ export default function Cockpit() {
         </div>
         <div className="space-y-4 sm:space-y-5 lg:col-span-4">
           <BriefingCard />
+          <StoreCard />
           <TasksPreview />
           <ChannelsPreview />
         </div>

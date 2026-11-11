@@ -8,6 +8,8 @@ import Room from "@/pages/Room";
 import Tasks from "@/pages/Tasks";
 import ZeroDirect from "@/pages/ZeroDirect";
 import Channels from "@/pages/Channels";
+import Projects from "@/pages/Projects";
+import StorePanel from "@/pages/StorePanel";
 
 // One <Route> per page in src/pages; BrowserRouter already wraps this in main.tsx.
 export default function App() {
@@ -21,6 +23,8 @@ export default function App() {
             <Route path="/tarefas" element={<Tasks />} />
             <Route path="/zero" element={<ZeroDirect />} />
             <Route path="/canais" element={<Channels />} />
+            <Route path="/projetos" element={<Projects />} />
+            <Route path="/loja" element={<StorePanel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppShell>

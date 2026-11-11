@@ -101,11 +101,46 @@ CHANNELS = [
     {
         "key": "mcp",
         "name": "Servidor MCP · Computador do Zero",
-        "description_pt": "Conectar aos MCPs da VPS (zero-mcp, private-room) e ao computador 100% dedicado — informe a URL quando quiser ativar.",
-        "description_en": "Connect to the VPS MCPs (zero-mcp, private-room) and the 100% dedicated computer — provide the URL to activate.",
+        "description_pt": "Saída: conectar o Zero aos MCPs que já rodam na VPS (zero-mcp, private-room) — informe o endereço quando quiser ativar.",
+        "description_en": "Outbound: connect Zero to the MCPs already running on the VPS (zero-mcp, private-room) — provide the address to activate.",
         "status": "disconnected",
         "config": {"vps": ""},
     },
+]
+
+
+PROJECTS = [
+    {
+        "slug": "aeropartz",
+        "name": "AeroPartz — Loja e Gestão Comercial",
+        "objective": "Fechar o aceite das jornadas principais da loja (acessibilidade completa) e consolidar a matriz final integrada.",
+        "in_progress": "",
+        "blocker": "Ensaio acessível parou na etapa de quantidade do produto (navegação por Tab). Matriz final integrada pendente.",
+        "next_step": "Destravar a etapa de quantidade no ensaio acessível e retomar a matriz final.",
+    },
+    {
+        "slug": "luna",
+        "name": "Luna — Atendimento Comercial",
+        "objective": "Integrar conversa, catálogo, tarefa e resultado no atendimento da Luna.",
+        "in_progress": "",
+        "blocker": "Definir políticas de consentimento, retenção e encerramento do atendimento.",
+        "next_step": "Mapear o fluxo conversa → catálogo → orçamento com evidência de ponta a ponta.",
+    },
+]
+
+ACCOUNTS = [
+    {"name": "Trabalho", "provider": "ChatGPT Pro", "note": "Cérebro principal do modo visual"},
+    {"name": "Codex", "provider": "Codex Pro", "note": "Usada pelo Pro"},
+    {"name": "Plus", "provider": "ChatGPT Plus", "note": "Usada pelo Plus"},
+    {"name": "Gemini web", "provider": "Gemini (grátis)", "note": ""},
+    {"name": "Google Modo IA", "provider": "Google", "note": "Consultas rápidas"},
+]
+
+STORE_SAMPLES = [
+    {"kind": "stock", "title": "Capacete (exemplo)", "detail": "Substitua pelos itens reais", "value": "2 un", "status": "critical"},
+    {"kind": "stock", "title": "Viseira (exemplo)", "detail": "", "value": "14 un", "status": "ok"},
+    {"kind": "order", "title": "Pedido #0001 (exemplo)", "detail": "Aguardando separação", "value": "R$ 0,00", "status": "open"},
+    {"kind": "coupon", "title": "Cupom de boas-vindas (exemplo)", "detail": "Confirme se está funcionando no checkout", "value": "EXEMPLO10", "status": "active"},
 ]
 
 
@@ -126,8 +161,23 @@ async def seed() -> None:
             upsert=True,
         )
 
+    for p in PROJECTS:
+        if not await db.projects.find_one({"slug": p["slug"]}):
+            await db.projects.insert_one({
+                **p, "id": f"seed-project-{p['slug']}", "status": "active", "last_verified": "",
+                "last_verified_at": None, "created_at": now, "updated_at": now,
+            })
+
+    if await db.accounts.count_documents({}) == 0:
+        for i, a in enumerate(ACCOUNTS):
+            await db.accounts.insert_one({**a, "id": f"seed-account-{i}", "status": "unverified", "created_at": now})
+
+    if await db.store_items.count_documents({}) == 0:
+        for i, it in enumerate(STORE_SAMPLES):
+            await db.store_items.insert_one({**it, "id": f"seed-store-{i}", "is_sample": True, "updated_at": now})
+
     await ensure_indexes()
-    print(f"seed ok: {len(AGENTS)} agents, {len(CHANNELS)} channels")
+    print(f"seed ok: {len(AGENTS)} agents, {len(CHANNELS)} channels, {len(PROJECTS)} projects")
 
 
 if __name__ == "__main__":

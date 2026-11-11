@@ -22,6 +22,7 @@ export interface Mission {
   text: string;
   status: string; // planning | delegating | completed | failed
   plan_intro: string | null;
+  project_id: string | null;
   created_at: string;
 }
 
@@ -32,8 +33,10 @@ export interface Task {
   agent_key: string;
   title: string;
   detail: string;
-  status: string; // queued | working | done | failed
+  status: string; // queued | working | review | verified | rejected | failed
   result: string | null;
+  project_id: string | null;
+  review_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +54,10 @@ export interface DirectMessage {
   id: string;
   role: string; // user | zero
   content: string;
+  intent: string; // explicando | propondo | executando
+  proposal: string | null;
+  project_id: string | null;
+  mission_id: string | null;
   created_at: string;
 }
 
@@ -95,4 +102,44 @@ export interface BriefingSettings {
   auto: boolean;
   hour: number;
   city: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  objective: string;
+  status: string; // active | paused | done
+  in_progress: string;
+  blocker: string;
+  next_step: string;
+  last_verified: string;
+  last_verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  provider: string;
+  status: string; // available | busy | offline | unverified
+  note: string;
+  created_at: string;
+}
+
+export interface StoreItem {
+  id: string;
+  kind: string; // stock | order | coupon
+  title: string;
+  detail: string;
+  value: string;
+  status: string; // stock: critical|ok · order: open|done · coupon: active|expired
+  is_sample: boolean;
+  updated_at: string;
+}
+
+export interface McpInfo {
+  path: string;
+  token_configured: boolean;
+  tools: string[];
 }

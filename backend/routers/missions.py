@@ -1,11 +1,9 @@
 """Missions — the Chefe dispatches to Zero, the engine takes it from there."""
 
-import asyncio
-
 from fastapi import APIRouter
 
 from lib.db import db
-from lib.orchestrator import run_mission
+from lib.orchestrator import start_mission
 from models.models import Mission, MissionCreate, aware
 
 router = APIRouter()
@@ -13,11 +11,8 @@ router = APIRouter()
 
 @router.post("/missions", response_model=Mission)
 async def create_mission(input: MissionCreate):
-    mission = Mission(text=input.text, status="planning")
-    await db.missions.insert_one(mission.model_dump())
-    # Background engine: the POST returns immediately, the room tells the story.
-    asyncio.create_task(run_mission(mission.id))
-    return mission
+    doc = await start_mission(input.text, input.project_id)
+    return Mission(**doc)
 
 
 @router.get("/missions", response_model=list[Mission])

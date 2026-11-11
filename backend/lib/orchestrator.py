@@ -1,12 +1,13 @@
 """The squad engine — runs missions end-to-end in the background.
 
-Flow: the Chefe dispatches a mission → Zero (cloud LLM) decomposes it into
-tasks and delegates → each agent executes its task (cloud LLM, its own
-provider/model) → every step is narrated into the shared room, tasks get
-results, and the mission closes with a summary.
+Flow: the Chefe dispatches a mission (optionally inside a project) → Zero
+(cloud LLM) decomposes it, using the project's resume card as context →
+each agent executes its task → tasks land in 'review' (an answer is not a
+delivery) until the Chefe approves → approval updates the project's
+'last verified delivery'.
 
-Every LLM call degrades to simulated content on failure, so the orchestration
-flow always completes and the room always tells the story.
+Every LLM call degrades to simulated content on failure, so the flow always
+completes and the room always tells the story.
 """
 
 import asyncio
@@ -21,39 +22,60 @@ from lib.search import web_search
 logger = logging.getLogger(__name__)
 
 DELEGATABLE = ("pro", "jarvis", "aluna", "plus")
+_BG: set[asyncio.Task] = set()  # keep refs so background tasks are not GC'd
+
+
+def spawn(coro) -> None:
+    task = asyncio.create_task(coro)
+    _BG.add(task)
+    task.add_done_callback(_BG.discard)
+
 
 PLAN_SYSTEM = (
-    "Você é o Zero, a IA principal do esquadrão do Chefe. Seu braço direito é o Pro, que supervisiona "
-    "os agentes operacionais: Jarvis (tarefas simples, cálculos, scripts), Aluna (site, web e publicações) "
+    "Você é o Zero, a IA principal do esquadrão do Chefe (operação AeroPartz). Seu braço direito é o Pro, que supervisiona "
+    "os agentes operacionais: Jarvis (tarefas simples, cálculos, scripts), Luna (atendimento comercial e site da AeroPartz) "
     "e Plus (executor analítico, versão enxuta do Pro). O Chefe manda a missão e VOCÊ a decompõe e delega.\n"
-    "Responda SOMENTE com um JSON válido, sem markdown e sem texto fora do JSON, no formato:\n"
-    '{"intro": "mensagem curta (1-2 frases) anunciando o plano em pt-BR", '
-    '"tasks": [{"agent_key": "pro|jarvis|aluna|plus", "title": "título curto", "detail": "o que exatamente fazer"}]}\n'
-    "Regras: no máximo 4 tarefas; use 'pro' para supervisão/consolidação em missões complexas; "
-    "'aluna' para qualquer coisa de site/web/publicação; 'jarvis' para tarefas rápidas/simples; "
-    "'plus' para análise e backup do Pro. Escreva tudo em português do Brasil."
+    "Responda SOMENTE com um JSON válido, sem markdown, no formato:\n"
+    '{"intro": "1-2 frases anunciando o plano", '
+    '"tasks": [{"agent_key": "pro|jarvis|aluna|plus", "title": "título curto", "detail": "o que fazer e qual o critério de entrega"}], '
+    '"next_step": "próximo passo do projeto depois desta missão", '
+    '"decision_needed": "decisão que só o Chefe pode tomar, ou string vazia"}\n'
+    "Regras: no máximo 4 tarefas; 'aluna' é a Luna (loja/site/atendimento); 'jarvis' rápidas; 'plus' análise; "
+    "'pro' supervisão/consolidação. Nunca invente preços, estoque ou fatos comerciais — use só os dados fornecidos. "
+    "Escreva tudo em português do Brasil."
 )
 
 EXEC_SYSTEM = (
-    "Você é {name}, {role} do esquadrão coordenado pelo Zero (IA principal) e pelo Pro. "
-    "Você acabou de receber uma tarefa delegada. Execute-a com o seu conhecimento e raciocínio "
-    "(você opera na nuvem, sem precisar de máquina pesada), responda em português do Brasil, "
-    "direto ao ponto, em no máximo 90 palavras. Traga resultado, decisão ou próximos passos "
-    "concretos — nunca desculpas nem promessas vagas."
+    "Você é {name}, {role} do esquadrão coordenado pelo Zero e pelo Pro. Execute a tarefa delegada "
+    "com seu raciocínio, em português do Brasil, direto ao ponto, no máximo 90 palavras. Traga resultado, "
+    "decisão ou próximos passos concretos. Não invente dados comerciais; se faltar dado, diga exatamente qual."
 )
 
 ROOM_REPLY_SYSTEM = (
-    "Você é o Zero, a IA principal do esquadrão (braço direito: Pro; operacionais: Jarvis, Aluna, Plus). "
-    "O Chefe acabou de falar na sala compartilhada dos agentes. Responda em português do Brasil, "
-    "em no máximo 80 palavras, reconhecendo o pedido e dizendo como o esquadrão vai agir "
-    "(se fizer sentido, ofereça transformar o pedido em missão formal para delegar)."
+    "Você é o Zero, a IA principal do esquadrão (braço direito: Pro; operacionais: Jarvis, Luna, Plus). "
+    "O Chefe falou na sala compartilhada. Responda em português do Brasil, no máximo 80 palavras, "
+    "dizendo como o esquadrão vai agir (ofereça transformar em missão formal quando fizer sentido)."
 )
 
 DIRECT_SYSTEM = (
-    "Você é o Zero, agente pessoal do Chefe — linha direta 1-a-1, estilo conversa de celular. "
-    "Fale em português do Brasil, tom parceiro e direto, no máximo 100 palavras. Você opera na nuvem "
-    "(GPT/OpenAI e Gemini), pode pesquisar na internet e delegar execuções ao Pro, Jarvis, Aluna e Plus. "
-    "Quando o pedido exigir ação, diga o que você mesmo fará e o que delegará."
+    "Você é o Zero, coordenador pessoal do Chefe — linha direta 1-a-1, estilo telefonema. Português do Brasil, "
+    "tom parceiro e direto. Você coordena Pro, Jarvis, Luna e Plus.\n"
+    "Classifique SUA resposta com uma intenção:\n"
+    "- explicando: responder/informar, sem ação.\n"
+    "- propondo: sugerir uma ação que precisa do OK do Chefe (preencha 'mission').\n"
+    "- executando: o Chefe deu uma ORDEM clara (ex: 'faça', 'continue', 'verifique'); você dispara a missão agora (preencha 'mission').\n"
+    "Nunca transforme comentário ou pergunta em tarefa. Na dúvida, use propondo.\n"
+    "Se o pedido for sobre um projeto da lista, use o id dele em project_id.\n"
+    "Responda SOMENTE com JSON válido: "
+    '{"intent": "explicando|propondo|executando", "reply": "fala curta (máx 90 palavras)", '
+    '"mission": "texto da missão ou string vazia", "project_id": "id ou null"}'
+)
+
+BRIEFING_SYSTEM = (
+    "Você é o Zero, agente pessoal do Chefe (loja AeroPartz). Monte o briefing da manhã em português do Brasil, "
+    "objetivo, no máximo 160 palavras, seções curtas: Clima (com base na busca), Loja AeroPartz (use SÓ os dados do painel "
+    "fornecidos: estoque crítico, pedidos em aberto, cupons ativos), Projetos (bloqueios/decisões), Prioridades de hoje. "
+    "Não invente números. Se um dado vier marcado como exemplo, avise que é exemplo."
 )
 
 
@@ -67,19 +89,74 @@ def _new_id() -> str:
 
 async def _post_room(sender_key: str, kind: str, content: str, mission_id: str | None = None) -> None:
     await db.room_messages.insert_one(
-        {
-            "id": _new_id(),
-            "sender_key": sender_key,
-            "kind": kind,
-            "content": content,
-            "mission_id": mission_id,
-            "created_at": _now(),
-        }
+        {"id": _new_id(), "sender_key": sender_key, "kind": kind, "content": content, "mission_id": mission_id, "created_at": _now()}
     )
 
 
 async def _agent(key: str) -> dict | None:
     return await db.agents.find_one({"key": key})
+
+
+# ---------- shared context blocks ----------
+
+async def store_context() -> str:
+    items = await db.store_items.find().to_list(200)
+    if not items:
+        return "(painel da loja vazio)"
+    lines = []
+    labels = {"stock": "Estoque", "order": "Pedido", "coupon": "Cupom"}
+    for it in items:
+        relevant = (it["kind"], it["status"]) in {("stock", "critical"), ("order", "open"), ("coupon", "active")}
+        if not relevant:
+            continue
+        tag = " [EXEMPLO]" if it.get("is_sample") else ""
+        lines.append(f"- {labels.get(it['kind'], it['kind'])}: {it['title']} · {it.get('value', '')} · {it.get('detail', '')}{tag}")
+    return "\n".join(lines) or "(nada crítico, nenhum pedido em aberto, nenhum cupom ativo)"
+
+
+async def projects_context() -> str:
+    projects = await db.projects.find({"status": {"$ne": "done"}}).to_list(30)
+    if not projects:
+        return "(nenhum projeto)"
+    return "\n".join(
+        f"- id={p['id']} · {p['name']} · objetivo: {p.get('objective', '')[:120]} · bloqueio: {p.get('blocker', '') or '—'}"
+        for p in projects
+    )
+
+
+async def project_card(project: dict) -> str:
+    recent = await db.tasks.find({"project_id": project["id"]}).sort("updated_at", -1).to_list(5)
+    results = "\n".join(
+        f"  · [{t['status']}] {t['agent_key']}: {t['title']} → {(t.get('result') or '')[:160]}" for t in recent
+    ) or "  (sem tarefas anteriores)"
+    return (
+        f"PROJETO: {project['name']}\n"
+        f"Objetivo atual: {project.get('objective') or '—'}\n"
+        f"Última entrega verificada: {project.get('last_verified') or '—'}\n"
+        f"Em andamento: {project.get('in_progress') or '—'}\n"
+        f"Bloqueio/decisão: {project.get('blocker') or '—'}\n"
+        f"Próximo passo: {project.get('next_step') or '—'}\n"
+        f"Resultados recentes:\n{results}"
+    )
+
+
+# ---------- missions ----------
+
+async def start_mission(text: str, project_id: str | None = None) -> dict:
+    """Create a mission and run it in the background. Shared by REST, chat and MCP."""
+    if project_id and not await db.projects.find_one({"id": project_id}):
+        project_id = None
+    doc = {"id": str(uuid.uuid4()), "text": text, "status": "planning", "plan_intro": None, "project_id": project_id, "created_at": _now()}
+    await db.missions.insert_one(dict(doc))
+    spawn(run_mission(doc["id"]))
+    return doc
+
+
+def resume_text(project: dict) -> str:
+    return (
+        f"Continue o projeto {project['name']} de onde paramos: confira a última entrega verificada, "
+        f"avance o próximo passo e me mostre o que precisa da minha decisão."
+    )
 
 
 def _sim_plan(text: str) -> dict:
@@ -88,53 +165,39 @@ def _sim_plan(text: str) -> dict:
         "intro": f"Missão recebida, Chefe. Assumo a coordenação de \"{short}\" e aciono o esquadrão agora.",
         "tasks": [
             {"agent_key": "pro", "title": "Supervisionar execução", "detail": f"Dividir em etapas e acompanhar: {short}"},
-            {"agent_key": "jarvis", "title": "Executar tarefa operacional", "detail": f"Rodar as verificações e cálculos simples de: {short}"},
-            {"agent_key": "aluna", "title": "Cuidar da parte do site", "detail": f"Preparar/publicar o conteúdo relacionado a: {short}"},
-            {"agent_key": "plus", "title": "Analisar resultados", "detail": f"Consolidar os resultados de: {short} e apontar riscos"},
+            {"agent_key": "jarvis", "title": "Executar tarefa operacional", "detail": f"Verificações simples de: {short}"},
+            {"agent_key": "aluna", "title": "Cuidar da parte da loja/site", "detail": f"Preparar o conteúdo relacionado a: {short}"},
         ],
+        "next_step": "Revisar as entregas do esquadrão",
+        "decision_needed": "",
     }
 
 
 def _sim_result(title: str, detail: str) -> str:
-    return (
-        f"[modo simulado] \"{title}\" concluída — levantei os pontos principais de "
-        f"\"{detail[:80]}\" e registrei o resultado à disposição do Pro e do Chefe."
-    )
+    return f"[modo simulado] \"{title}\" — levantei os pontos de \"{detail[:80]}\" e deixei para revisão do Chefe."
 
 
-async def _execute_task(task: dict, mission_text: str, agent: dict | None) -> None:
-    """Run one task to done/failed, narrating the result into the room."""
+async def _execute_task(task: dict, context: str, agent: dict | None) -> None:
     title, detail = task["title"], task["detail"]
-
     await db.tasks.update_one({"id": task["id"]}, {"$set": {"status": "working", "updated_at": _now()}})
-    await asyncio.sleep(1.0)  # give the UI a beat to see 'working' in the stream
+    await asyncio.sleep(1.0)
 
     reply: str | None = None
     if agent:
-        prompt = (
-            f"Missão do Chefe: {mission_text}\n\n"
-            f"Sua tarefa delegada: {title}\n"
-            f"Detalhes: {detail or '(sem detalhes adicionais)'}\n\n"
-            f"Responda com a execução/conclusão."
-        )
         reply = await llm_text(
             EXEC_SYSTEM.format(name=agent["name"], role=agent.get("role_pt", "agente operacional")),
-            prompt,
+            f"{context}\n\nSua tarefa delegada: {title}\nDetalhes/critério: {detail or '—'}\n\nResponda com a execução.",
             session_id=f"task-{task['id']}",
             provider=agent.get("provider", "openai"),
             model=agent.get("model", "gpt-5.4"),
         )
-
     simulated = reply is None
     if simulated:
         reply = _sim_result(title, detail)
 
-    await db.tasks.update_one(
-        {"id": task["id"]},
-        {"$set": {"status": "done", "result": reply, "updated_at": _now()}},
-    )
-    content = f"Tarefa concluída: {title}\n\n{reply}" + ("\n\n(modo simulado — IA em nuvem indisponível agora)" if simulated else "")
-    await _post_room(task["agent_key"], "chat", content, task["mission_id"])
+    # An agent's answer is not a delivery: it waits for the Chefe's review.
+    await db.tasks.update_one({"id": task["id"]}, {"$set": {"status": "review", "result": reply, "updated_at": _now()}})
+    await _post_room(task["agent_key"], "chat", f"Entrega para revisão: {title}\n\n{reply}", task["mission_id"])
 
 
 async def run_mission(mission_id: str) -> None:
@@ -142,151 +205,135 @@ async def run_mission(mission_id: str) -> None:
     if not mission:
         return
     text = mission["text"]
+    project = await db.projects.find_one({"id": mission.get("project_id")}) if mission.get("project_id") else None
 
-    await _post_room("system", "system", "Missão recebida pelo Zero. Analisando o pedido e montando o plano de delegação...", mission_id)
+    await _post_room("system", "system", "Missão recebida pelo Zero. Analisando e montando o plano de delegação...", mission_id)
+
+    context = f"Missão do Chefe: {text}"
+    if project:
+        context = f"{await project_card(project)}\n\n{context}"
+    context += f"\n\nPainel da loja AeroPartz:\n{await store_context()}"
 
     zero = await _agent("zero") or {}
-    plan_raw = await llm_text(
-        PLAN_SYSTEM,
-        f"Missão do Chefe: {text}",
-        session_id=f"plan-{mission_id}",
-        provider=zero.get("provider", "openai"),
-        model=zero.get("model", "gpt-5.4"),
+    plan = llm_json(
+        await llm_text(
+            PLAN_SYSTEM, context, session_id=f"plan-{mission_id}",
+            provider=zero.get("provider", "openai"), model=zero.get("model", "gpt-5.4"),
+        )
     )
-    plan = llm_json(plan_raw)
     simulated_plan = plan is None or not isinstance(plan.get("tasks"), list) or not plan["tasks"]
     if simulated_plan:
         plan = _sim_plan(text)
 
     intro = str(plan.get("intro") or "").strip() or "Plano montado. Delegando ao esquadrão."
-    raw_tasks = [t for t in plan.get("tasks", []) if isinstance(t, dict)][:4]
-
     task_docs: list[dict] = []
-    for t in raw_tasks:
-        key = t.get("agent_key")
-        if key not in DELEGATABLE:
-            key = "pro"
-        task_docs.append(
-            {
-                "id": _new_id(),
-                "mission_id": mission_id,
-                "mission_text": text,
-                "agent_key": key,
-                "title": str(t.get("title") or "Tarefa").strip()[:140] or "Tarefa",
-                "detail": str(t.get("detail") or "").strip()[:800],
-                "status": "queued",
-                "result": None,
-                "created_at": _now(),
-                "updated_at": _now(),
-            }
-        )
-    if not task_docs:
-        task_docs.append(
-            {
-                "id": _new_id(),
-                "mission_id": mission_id,
-                "mission_text": text,
-                "agent_key": "pro",
-                "title": "Supervisionar execução",
-                "detail": text[:300],
-                "status": "queued",
-                "result": None,
-                "created_at": _now(),
-                "updated_at": _now(),
-            }
-        )
+    for t in [t for t in plan.get("tasks", []) if isinstance(t, dict)][:4] or [{"agent_key": "pro", "title": "Supervisionar execução", "detail": text[:300]}]:
+        key = t.get("agent_key") if t.get("agent_key") in DELEGATABLE else "pro"
+        task_docs.append({
+            "id": _new_id(), "mission_id": mission_id, "mission_text": text, "agent_key": key,
+            "title": (str(t.get("title") or "Tarefa").strip()[:140] or "Tarefa"),
+            "detail": str(t.get("detail") or "").strip()[:800],
+            "status": "queued", "result": None, "project_id": mission.get("project_id"), "review_note": None,
+            "created_at": _now(), "updated_at": _now(),
+        })
+    await db.tasks.insert_many([dict(d) for d in task_docs])
 
-    for doc in task_docs:
-        await db.tasks.insert_one(doc)
-
-    lines = [intro, ""]
-    lines += [f"→ {t['agent_key'].capitalize()}: {t['title']}" for t in task_docs]
+    names = {"aluna": "Luna"}
+    lines = [intro, ""] + [f"→ {names.get(t['agent_key'], t['agent_key'].capitalize())}: {t['title']}" for t in task_docs]
+    if project:
+        lines.insert(0, f"📁 {project['name']}")
     if simulated_plan:
         lines += ["", "(plano simulado — IA em nuvem indisponível agora)"]
     await _post_room("zero", "delegation", "\n".join(lines), mission_id)
     await db.missions.update_one({"id": mission_id}, {"$set": {"status": "delegating", "plan_intro": intro}})
-
-    await asyncio.sleep(1.5)  # let the plan land in the room before executions start
+    await asyncio.sleep(1.5)
 
     failed = 0
     for doc in task_docs:
         try:
-            await _execute_task(doc, text, await _agent(doc["agent_key"]))
-        except Exception as exc:  # a single task must never sink the mission
+            await _execute_task(doc, context, await _agent(doc["agent_key"]))
+        except Exception as exc:
             logger.exception("task %s failed", doc["id"])
             failed += 1
-            await db.tasks.update_one(
-                {"id": doc["id"]},
-                {"$set": {"status": "failed", "result": f"Erro na execução: {exc}", "updated_at": _now()}},
-            )
-            await _post_room("system", "system", f"Falha na tarefa \"{doc['title']}\" — registrada como failed.", mission_id)
+            await db.tasks.update_one({"id": doc["id"]}, {"$set": {"status": "failed", "result": f"Erro na execução: {exc}", "updated_at": _now()}})
 
-    done = len(task_docs) - failed
-    summary = f"Resumo do Zero: missão concluída com {done} tarefa(s) executada(s)"
-    summary += f" e {failed} falha(s)." if failed else "."
+    decision = str(plan.get("decision_needed") or "").strip()
+    if project:
+        update = {"in_progress": f"{text[:200]} — {len(task_docs) - failed} entrega(s) aguardando revisão", "updated_at": _now()}
+        if plan.get("next_step"):
+            update["next_step"] = str(plan["next_step"])[:500]
+        if decision:
+            update["blocker"] = decision[:500]
+        await db.projects.update_one({"id": project["id"]}, {"$set": update})
+
+    summary = f"Resumo do Zero: {len(task_docs) - failed} entrega(s) aguardando sua revisão em Tarefas"
+    summary += f", {failed} falha(s)." if failed else "."
+    if decision:
+        summary += f"\n\n⚠️ Precisa da sua decisão: {decision}"
     await _post_room("system", "summary", summary, mission_id)
-    await db.missions.update_one(
-        {"id": mission_id},
-        {"$set": {"status": "failed" if done == 0 else "completed"}},
-    )
+    await db.missions.update_one({"id": mission_id}, {"$set": {"status": "failed" if failed == len(task_docs) else "completed"}})
 
+
+async def review_task(task: dict, approve: bool, note: str | None) -> dict:
+    status = "verified" if approve else "rejected"
+    await db.tasks.update_one({"id": task["id"]}, {"$set": {"status": status, "review_note": note, "updated_at": _now()}})
+    if approve and task.get("project_id"):
+        await db.projects.update_one(
+            {"id": task["project_id"]},
+            {"$set": {"last_verified": f"{task['title']} — {(task.get('result') or '').replace('**', '')[:240]}", "last_verified_at": _now(), "updated_at": _now()}},
+        )
+    verdict = "✅ aprovou" if approve else "↩️ devolveu"
+    await _post_room("user", "system", f"Chefe {verdict} a entrega \"{task['title']}\"" + (f": {note}" if note else "."), task.get("mission_id"))
+    return await db.tasks.find_one({"id": task["id"]})
+
+
+# ---------- conversations ----------
 
 async def zero_reply_in_room() -> None:
-    """Zero answers the Chefe's message in the shared room."""
     recent = await db.room_messages.find().sort("created_at", -1).to_list(12)
-    transcript = "\n".join(
-        f"{m.get('sender_key', '?')}: {m.get('content', '')[:300]}" for m in reversed(recent)
-    )
+    transcript = "\n".join(f"{m.get('sender_key', '?')}: {m.get('content', '')[:300]}" for m in reversed(recent))
     zero = await _agent("zero") or {}
     reply = await llm_text(
-        ROOM_REPLY_SYSTEM,
-        f"Últimas mensagens da sala:\n{transcript}\n\nResponda ao Chefe.",
-        session_id=f"room-{_new_id()}",
-        provider=zero.get("provider", "openai"),
-        model=zero.get("model", "gpt-5.4"),
+        ROOM_REPLY_SYSTEM, f"Últimas mensagens da sala:\n{transcript}\n\nResponda ao Chefe.",
+        session_id=f"room-{_new_id()}", provider=zero.get("provider", "openai"), model=zero.get("model", "gpt-5.4"),
     )
     if reply is None:
-        reply = (
-            "[modo simulado] Entendido, Chefe. Anotado aqui na sala — se quiser, transforme isso em uma missão "
-            "formal no Cockpit que eu decompõe e delego ao esquadrão agora mesmo."
-        )
+        reply = "[modo simulado] Entendido, Chefe. Se quiser, transforme isso em missão no Cockpit que eu delego agora."
     await _post_room("zero", "chat", reply)
 
 
 async def zero_direct_reply() -> None:
-    """Zero answers on the direct 1-a-1 line."""
     recent = await db.zero_messages.find().sort("created_at", -1).to_list(10)
-    transcript = "\n".join(
-        f"{'Chefe' if m.get('role') == 'user' else 'Zero'}: {m.get('content', '')[:400]}" for m in reversed(recent)
-    )
+    transcript = "\n".join(f"{'Chefe' if m.get('role') == 'user' else 'Zero'}: {m.get('content', '')[:400]}" for m in reversed(recent))
     zero = await _agent("zero") or {}
-    reply = await llm_text(
+    raw = await llm_text(
         DIRECT_SYSTEM,
-        f"Conversa até agora:\n{transcript}\n\nResponda ao Chefe.",
-        session_id=f"direct-{_new_id()}",
-        provider=zero.get("provider", "openai"),
-        model=zero.get("model", "gpt-5.4"),
+        f"Projetos:\n{await projects_context()}\n\nPainel da loja:\n{await store_context()}\n\nConversa:\n{transcript}\n\nResponda ao Chefe.",
+        session_id=f"direct-{_new_id()}", provider=zero.get("provider", "openai"), model=zero.get("model", "gpt-5.4"),
     )
-    if reply is None:
-        reply = (
-            "[modo simulado] Estou online, Chefe. Pode mandar a próxima — pesquiso na internet, "
-            "delego ao Pro e aciono Jarvis, Aluna e Plus pra executar tudo pelo celular."
-        )
-    await db.zero_messages.insert_one({"id": _new_id(), "role": "zero", "content": reply, "created_at": _now()})
-
-
-BRIEFING_SYSTEM = (
-    "Você é o Zero, agente pessoal do Chefe (loja AeroPartz). Monte o briefing da manhã em português do Brasil, "
-    "objetivo, em no máximo 140 palavras, com seções curtas: Clima (com base nos resultados da busca), "
-    "Loja AeroPartz (checklist de abertura: caixa, estoque crítico, pedidos em aberto, cupons ativos), "
-    "Prioridades de hoje e Lembretes (e-mails e câmeras). Use os dados de busca apenas para o clima; "
-    "para o resto, diga o que você mesmo vai verificar. Não invente números."
-)
+    data = llm_json(raw)
+    msg = {"id": _new_id(), "role": "zero", "intent": "explicando", "proposal": None, "project_id": None, "mission_id": None, "created_at": _now()}
+    if data and str(data.get("reply") or "").strip():
+        intent = data.get("intent") if data.get("intent") in ("explicando", "propondo", "executando") else "explicando"
+        mission_text = str(data.get("mission") or "").strip()
+        pid = data.get("project_id") if isinstance(data.get("project_id"), str) else None
+        msg.update(content=str(data["reply"]).strip(), intent=intent, project_id=pid)
+        if intent in ("propondo", "executando") and mission_text:
+            msg["proposal"] = mission_text[:1500]
+            if intent == "executando":
+                mission = await start_mission(mission_text[:1500], pid)
+                msg["mission_id"] = mission["id"]
+        elif intent != "explicando":
+            msg["intent"] = "explicando"
+    elif raw:
+        msg["content"] = raw.strip()
+    else:
+        msg["content"] = "[modo simulado] Estou online, Chefe. Mande a ordem que eu organizo o esquadrão."
+    await db.zero_messages.insert_one(msg)
 
 
 async def run_briefing(settings: dict, day: str | None = None) -> dict:
-    """Morning routine: real weather search + Zero's briefing, posted to the room."""
-    now = datetime.now(timezone.utc)
+    """Morning routine: real weather search + store panel + projects → Zero's briefing, posted to the room."""
     city = settings.get("city", "São Paulo")
     hits = await web_search(f"previsão do tempo hoje {city}")
     search_block = "\n".join(f"- {h.title}: {h.snippet[:140]}" for h in hits[:5]) or "(busca indisponível agora)"
@@ -294,24 +341,14 @@ async def run_briefing(settings: dict, day: str | None = None) -> dict:
     zero = await _agent("zero") or {}
     reply = await llm_text(
         BRIEFING_SYSTEM,
-        f"Clima — resultados da busca real para {city}:\n{search_block}\n\nMonte o briefing da manhã.",
-        session_id=f"briefing-{_new_id()}",
-        provider=zero.get("provider", "openai"),
-        model=zero.get("model", "gpt-5.4"),
+        f"Clima — busca real para {city}:\n{search_block}\n\nPainel da loja AeroPartz:\n{await store_context()}\n\n"
+        f"Projetos:\n{await projects_context()}\n\nMonte o briefing da manhã.",
+        session_id=f"briefing-{_new_id()}", provider=zero.get("provider", "openai"), model=zero.get("model", "gpt-5.4"),
     )
     if reply is None:
-        reply = (
-            "[modo simulado] Bom dia, Chefe. Sem nuvem agora: verifique caixa, estoque crítico, pedidos em aberto "
-            "e cupons ativos da AeroPartz; confira e-mails e as câmeras."
-        )
+        reply = "[modo simulado] Bom dia, Chefe. Sem nuvem agora: confira o painel da loja e os bloqueios dos projetos."
 
-    doc = {
-        "id": _new_id(),
-        "day": day or now.strftime("%Y-%m-%d"),
-        "city": city,
-        "content": reply,
-        "created_at": _now(),
-    }
-    await db.briefings.insert_one(doc)
+    doc = {"id": _new_id(), "day": day or _now().strftime("%Y-%m-%d"), "city": city, "content": reply, "created_at": _now()}
+    await db.briefings.insert_one(dict(doc))
     await _post_room("zero", "briefing", f"🌅 Briefing da manhã ({doc['day']} — {city}):\n\n{reply}")
     return doc
