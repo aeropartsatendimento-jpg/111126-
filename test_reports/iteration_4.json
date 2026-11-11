@@ -1,0 +1,44 @@
+{
+  "iteration": 4,
+  "summary": "New feature: concurrency-safe task review and proposal execution. 4/4 acceptance criteria covered with 2 new backend test files (atomic review race, atomic proposal-execute race) plus re-run of the existing UI review-flow browser check. All 3 checks[] entries passed; full backend suite 17/17 green.",
+  "passed": 3,
+  "failed": 0,
+  "flaky": 0,
+  "blocked": 0,
+  "test_error": 0,
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Duas aprovações concorrentes da mesma tarefa produzem uma única decisão",
+      "name": "test_tscheck_review_concurrency.py::test_concurrent_reviews_single_decision_and_idempotent_effects",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Created tscheck-review-race mission, waited for a task in review, fired two concurrent PATCH /tasks/{id}/review (approve=True / approve=False) via threads -> statuses sorted == [200, 409]; final task status in {verified, rejected}."
+    },
+    {
+      "criterion": "Efeitos da revisão são idempotentes",
+      "name": "test_tscheck_review_concurrency.py::test_concurrent_reviews_single_decision_and_idempotent_effects",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Same race: after review_effects settled to 'completed' on the raw task doc, direct Mongo check found <=1 memories with id task-review-{id} and exactly 1 room_messages doc with id task-review-{id}, regardless of which concurrent request won."
+    },
+    {
+      "criterion": "Duas execuções concorrentes da mesma proposta criam uma única missão",
+      "name": "test_tscheck_proposal_concurrency.py::test_concurrent_execute_proposal_creates_single_mission",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Inserted synthetic zero_messages fixture (tscheck-proposal-<id>, intent=propondo) directly via pymongo per seed_facts; fired two concurrent POST /zero/messages/{id}/execute -> statuses sorted == [200, 409]; exactly one mission document found with the reserved mission_id; fixture + mission/tasks/room_messages cleaned up in fixture teardown."
+    },
+    {
+      "criterion": "O fluxo normal de revisão continua funcionando na interface",
+      "name": "task-review-approve-reject",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Re-ran persisted check: created tscheck-review-ui mission via Cockpit API, task reached review, clicked task-approve-{id} in /tarefas UI, status badge updated away from 'review' (Verificada) with no error; cross-checked GET /tasks shows status=verified."
+    }
+  ],
+  "bugs": [],
+  "action_items": [
+    "Matrix had 4 criteria; produced 4 checks[] entries (criteria 1 and 2 share one backend test function since both are exercised by the same race — listed as separate rows for traceability per matrix wording)."
+  ]
+}

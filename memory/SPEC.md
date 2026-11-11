@@ -41,12 +41,14 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
   (decision_needed do plano). Seed: `seed-project-aeropartz`, `seed-project-luna` (bloqueios vindos da auditoria).
 - **Entregas**: tarefas terminam em `review` (resposta de agente ≠ entrega). Chefe aprova/devolve:
   `PATCH /tasks/{id}/review {approve, note}` → `verified`/`rejected` (409 se não está em review). Aprovar grava
-  `last_verified` no projeto. Status: queued|working|review|verified|rejected|failed.
+  `last_verified` no projeto. A transição é atômica e usa IDs determinísticos para não duplicar memória/mensagem
+  sob concorrência. Status: queued|working|review|verified|rejected|failed.
 - **Contas salvas**: `GET/POST /accounts`, `PATCH/DELETE /accounts/{id}` — status available|busy|offline|unverified
   (seed: 5 contas, todas "unverified" — disponibilidade nunca verificada).
 - **Intenção do Zero** (linha direta): cada resposta é explicando|propondo|executando (JSON do LLM). executando →
   dispara a missão na hora (com project_id se reconhecer o projeto); propondo → botão "Aprovar e executar"
-  (`POST /zero/messages/{id}/execute`, 409 se já executada ou não é proposta).
+  (`POST /zero/messages/{id}/execute`, 409 se já executada ou não é proposta). A proposta reserva o `mission_id`
+  atomicamente antes de criar a missão, impedindo disparos duplicados.
 - **Painel AeroPartz** (`/loja`): `GET/POST /store/items`, `PATCH/DELETE /store/items/{id}`; kind stock(critical|ok),
   order(open|done), coupon(active|expired). Seed com 4 itens `is_sample=true` (marcados "Exemplo"). Itens
   críticos/abertos/ativos entram no contexto do plano, da linha direta e do briefing. Conexão direta com a loja: futura.

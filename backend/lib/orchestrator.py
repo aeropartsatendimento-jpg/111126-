@@ -14,6 +14,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
+from pymongo import ReturnDocument
 
 from lib.brain import llm_json, llm_text
 from lib.dates import today_iso
@@ -90,10 +91,25 @@ def _new_id() -> str:
     return uuid.uuid4().hex
 
 
-async def _post_room(sender_key: str, kind: str, content: str, mission_id: str | None = None) -> None:
-    await db.room_messages.insert_one(
-        {"id": _new_id(), "sender_key": sender_key, "kind": kind, "content": content, "mission_id": mission_id, "created_at": _now()}
-    )
+async def _post_room(
+    sender_key: str,
+    kind: str,
+    content: str,
+    mission_id: str | None = None,
+    message_id: str | None = None,
+) -> None:
+    doc = {
+        "id": message_id or _new_id(),
+        "sender_key": sender_key,
+        "kind": kind,
+        "content": content,
+        "mission_id": mission_id,
+        "created_at": _now(),
+    }
+    if message_id:
+        await db.room_messages.update_one({"id": message_id}, {"$setOnInsert": doc}, upsert=True)
+    else:
+        await db.room_messages.insert_one(doc)
 
 
 async def _agent(key: str) -> dict | None:
@@ -143,11 +159,22 @@ async def project_card(project: dict) -> str:
     )
 
 
-async def remember(kind: str, title: str, content: str, source: str, project_id: str | None = None) -> None:
-    await db.memories.insert_one({
-        "id": _new_id(), "kind": kind, "title": title[:200], "content": content[:3000], "source": source[:300],
+async def remember(
+    kind: str,
+    title: str,
+    content: str,
+    source: str,
+    project_id: str | None = None,
+    memory_id: str | None = None,
+) -> None:
+    doc = {
+        "id": memory_id or _new_id(), "kind": kind, "title": title[:200], "content": content[:3000], "source": source[:300],
         "project_id": project_id, "replaces": None, "superseded_by": None, "created_at": _now(),
-    })
+    }
+    if memory_id:
+        await db.memories.update_one({"id": memory_id}, {"$setOnInsert": doc}, upsert=True)
+    else:
+        await db.memories.insert_one(doc)
 
 
 async def memory_context() -> str:
@@ -164,11 +191,11 @@ async def memory_context() -> str:
 
 # ---------- missions ----------
 
-async def start_mission(text: str, project_id: str | None = None) -> dict:
+async def start_mission(text: str, project_id: str | None = None, mission_id: str | None = None) -> dict:
     """Create a mission and run it in the background. Shared by REST, chat and MCP."""
     if project_id and not await db.projects.find_one({"id": project_id}):
         project_id = None
-    doc = {"id": str(uuid.uuid4()), "text": text, "status": "planning", "plan_intro": None, "project_id": project_id, "created_at": _now()}
+    doc = {"id": mission_id or str(uuid.uuid4()), "text": text, "status": "planning", "plan_intro": None, "project_id": project_id, "created_at": _now()}
     await db.missions.insert_one(dict(doc))
     spawn(run_mission(doc["id"]))
     return doc
@@ -296,20 +323,49 @@ async def run_mission(mission_id: str) -> None:
     await db.missions.update_one({"id": mission_id}, {"$set": {"status": "failed" if failed == len(task_docs) else "completed"}})
 
 
-async def review_task(task: dict, approve: bool, note: str | None) -> dict:
-    status = "verified" if approve else "rejected"
-    await db.tasks.update_one({"id": task["id"]}, {"$set": {"status": status, "review_note": note, "updated_at": _now()}})
+async def complete_review_effects(task: dict) -> dict:
+    """Apply review side effects idempotently for a claimed terminal decision."""
+    approve = task["status"] == "verified"
+    note = task.get("review_note")
     if approve and task.get("project_id"):
         await db.projects.update_one(
             {"id": task["project_id"]},
             {"$set": {"last_verified": f"{task['title']} — {(task.get('result') or '').replace('**', '')[:240]}", "last_verified_at": _now(), "updated_at": _now()}},
         )
     if approve:
-        await remember("fato_verificado", task["title"], (task.get("result") or "").replace("**", ""),
-                       f"Entrega de {task['agent_key']} aprovada pelo Chefe (tarefa {task['id'][:8]})", task.get("project_id"))
+        await remember(
+            "fato_verificado",
+            task["title"],
+            (task.get("result") or "").replace("**", ""),
+            f"Entrega de {task['agent_key']} aprovada pelo Chefe (tarefa {task['id'][:8]})",
+            task.get("project_id"),
+            memory_id=f"task-review-{task['id']}",
+        )
     verdict = "✅ aprovou" if approve else "↩️ devolveu"
-    await _post_room("user", "system", f"Chefe {verdict} a entrega \"{task['title']}\"" + (f": {note}" if note else "."), task.get("mission_id"))
+    await _post_room(
+        "user",
+        "system",
+        f"Chefe {verdict} a entrega \"{task['title']}\"" + (f": {note}" if note else "."),
+        task.get("mission_id"),
+        message_id=f"task-review-{task['id']}",
+    )
+    await db.tasks.update_one(
+        {"id": task["id"], "review_effects": "pending"},
+        {"$set": {"review_effects": "completed", "updated_at": _now()}},
+    )
     return await db.tasks.find_one({"id": task["id"]})
+
+
+async def review_task(task_id: str, approve: bool, note: str | None) -> dict | None:
+    status = "verified" if approve else "rejected"
+    task = await db.tasks.find_one_and_update(
+        {"id": task_id, "status": "review"},
+        {"$set": {"status": status, "review_note": note, "review_effects": "pending", "updated_at": _now()}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not task:
+        return None
+    return await complete_review_effects(task)
 
 
 # ---------- conversations ----------

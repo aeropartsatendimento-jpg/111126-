@@ -36,6 +36,7 @@
 | Busca web | `[x]` | Busca e fallback vazio seguro verificados sem quebra da página |
 | Linha Direta/voz | `[~]` | Implementada; voz real depende de navegador compatível e teste manual |
 | Navegador Visual simulado | `[x]` | URL, objetivo, quatro etapas, persistência e publicação na Sala validados 5/5 |
+| Concorrência de decisões | `[x]` | Revisões e propostas atômicas, com efeitos idempotentes, validadas sob corrida |
 | Integrações reais | `[!]` | Aguardam URLs, contas, tokens e decisões listadas na seção 6 |
 
 ### Última validação registrada
@@ -135,13 +136,15 @@ Evidência: `test_reports/iteration_3.json` — 5/5 critérios do Navegador apro
 
 ### P1.1 — Tornar revisões e propostas idempotentes
 
-- [ ] Reproduzir duas aprovações simultâneas da mesma tarefa.
-- [ ] Trocar a transição de `review` por atualização atômica condicionada no MongoDB.
-- [ ] Garantir que memória e mensagem de aprovação sejam criadas uma única vez.
-- [ ] Reproduzir dois cliques simultâneos em “Aprovar e executar” na mesma proposta.
-- [ ] Reservar a proposta atomicamente antes de criar a missão e impedir missão duplicada.
-- [ ] Adicionar casos de conflito 409 aos testes de backend.
-- [ ] Critério de aceite: concorrência cria exatamente uma decisão e uma missão.
+- [x] Reproduzir duas aprovações simultâneas da mesma tarefa.
+- [x] Trocar a transição de `review` por atualização atômica condicionada no MongoDB.
+- [x] Garantir que memória e mensagem de aprovação usem IDs determinísticos e sejam criadas uma única vez.
+- [x] Reproduzir dois cliques simultâneos em “Aprovar e executar” na mesma proposta.
+- [x] Reservar a proposta atomicamente antes de criar a missão e impedir missão duplicada.
+- [x] Adicionar casos de conflito 409 aos testes de backend.
+- [x] Critério de aceite: concorrência cria exatamente uma decisão e uma missão.
+
+Evidência: `test_reports/iteration_4.json` — corrida de revisão/proposta aprovada; suíte backend 17/17.
 
 ### P1.2 — Tornar a rotina automática resistente a reinícios
 

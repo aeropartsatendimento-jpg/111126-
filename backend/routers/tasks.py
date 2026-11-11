@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from lib.db import db
-from lib.orchestrator import review_task
+from lib.orchestrator import complete_review_effects, review_task
 from models.models import Task, TaskReview, aware
 
 router = APIRouter()
@@ -36,5 +36,13 @@ async def review(tid: str, input: TaskReview):
     if not doc:
         raise HTTPException(status_code=404, detail="task not found")
     if doc["status"] != "review":
+        if doc["status"] in {"verified", "rejected"} and doc.get("review_effects") == "pending":
+            await complete_review_effects(doc)
         raise HTTPException(status_code=409, detail="task is not awaiting review")
-    return to_task(await review_task(doc, input.approve, input.note))
+    reviewed = await review_task(tid, input.approve, input.note)
+    if not reviewed:
+        raced = await db.tasks.find_one({"id": tid})
+        if raced and raced.get("review_effects") == "pending":
+            await complete_review_effects(raced)
+        raise HTTPException(status_code=409, detail="task is not awaiting review")
+    return to_task(reviewed)
