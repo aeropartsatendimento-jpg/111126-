@@ -1,0 +1,275 @@
+{
+  "project_name": "QG do Zero (Zero's HQ)",
+  "tagline": "Personal AI-Agent Orchestration Headquarters",
+  "app_context": "dashboard",
+  "locale_and_mobile_strategy": {
+    "primary_locale": "pt-BR",
+    "supported_languages": ["pt", "en"],
+    "date_format": "DD/MM/YYYY HH:mm",
+    "currency_format": "BRL (R$)",
+    "number_format": "1.234,56",
+    "mobile_first_design": {
+      "viewport": "Optimized for mobile touchscreens (iPhone/Android) with collapsible bottom drawer/tabs navigation and swipe-ready panels, transitioning seamlessly into high-density 3-column cockpit on desktop (>=1024px)",
+      "touch_targets": "Minimum 44px on all buttons, triggers, channel toggles, and chat inputs",
+      "mobile_navigation": "Sticky top brand header with PT/EN + Theme toggle + quick status pill, plus a bottom quick-switch action bar for [Cockpit, Sala dos Agentes, Fila de Tarefas, Linha Direta com Zero, Canais]"
+    }
+  },
+  "theme_strategy": {
+    "default_theme": "light",
+    "theme_switch_supported": true,
+    "user_preference": "light & clean productivity (claro e limpo, estilo app de produtividade)",
+    "aesthetic_direction": "Swiss-Productivity Hybrid + Tactical Clarity — Crisp off-white surfaces, subtle slate borders, electric cobalt and warm ochre accents representing agent intelligence states, dense yet breathable operational command hierarchy"
+  },
+  "colors": {
+    "surfaces": [
+      {
+        "name": "page",
+        "kind": "solid",
+        "bg": "#F8FAFC",
+        "on_bg": "#0F172A",
+        "on_bg_muted": "#64748B",
+        "roles": {
+          "link": "#2563EB",
+          "error": "#DC2626",
+          "success": "#16A34A",
+          "warning": "#D97706"
+        }
+      },
+      {
+        "name": "panel",
+        "kind": "solid",
+        "bg": "#FFFFFF",
+        "on_bg": "#0F172A",
+        "on_bg_muted": "#475569",
+        "roles": {
+          "border": "#E2E8F0",
+          "border_active": "#3B82F6",
+          "hover_bg": "#F1F5F9"
+        }
+      },
+      {
+        "name": "sidebar_brand",
+        "kind": "solid",
+        "bg": "#0B132B",
+        "on_bg": "#F8FAFC",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "active_indicator": "#38BDF8",
+          "border": "#1E293B"
+        }
+      },
+      {
+        "name": "agent_card_zero",
+        "kind": "solid",
+        "bg": "#EFF6FF",
+        "on_bg": "#1E3A8A",
+        "on_bg_muted": "#3B82F6",
+        "roles": {
+          "border": "#BFDBFE",
+          "tag": "#1D4ED8"
+        }
+      },
+      {
+        "name": "agent_card_pro",
+        "kind": "solid",
+        "bg": "#F5F3FF",
+        "on_bg": "#4C1D95",
+        "on_bg_muted": "#7C3AED",
+        "roles": {
+          "border": "#DDD6FE",
+          "tag": "#6D28D9"
+        }
+      },
+      {
+        "name": "agent_card_worker",
+        "kind": "solid",
+        "bg": "#F8FAFC",
+        "on_bg": "#1E293B",
+        "on_bg_muted": "#64748B",
+        "roles": {
+          "border": "#E2E8F0",
+          "tag": "#0F172A"
+        }
+      },
+      {
+        "name": "dark_page",
+        "kind": "solid",
+        "bg": "#0B1120",
+        "on_bg": "#F8FAFC",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "link": "#60A5FA",
+          "error": "#F87171",
+          "success": "#4ADE80",
+          "warning": "#FBBF24"
+        }
+      },
+      {
+        "name": "dark_panel",
+        "kind": "solid",
+        "bg": "#111827",
+        "on_bg": "#F9FAFB",
+        "on_bg_muted": "#9CA3AF",
+        "roles": {
+          "border": "#1F2937",
+          "border_active": "#3B82F6",
+          "hover_bg": "#1F2937"
+        }
+      }
+    ],
+    "accent": "#2563EB",
+    "on_accent": "#FFFFFF",
+    "agent_identity_accents": {
+      "zero": {
+        "name": "Zero (Main AI / Comandante)",
+        "badge_bg": "#DBEAFE",
+        "badge_text": "#1E40AF",
+        "avatar_bg": "linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)",
+        "border": "#93C5FD",
+        "role": "Orquestrador Supremo & Cérebro Central"
+      },
+      "pro": {
+        "name": "Pro (Braço Direito / Delegador)",
+        "badge_bg": "#EDE9FE",
+        "badge_text": "#5B21B6",
+        "avatar_bg": "linear-gradient(135deg, #6D28D9 0%, #8B5CF6 100%)",
+        "border": "#C4B5FD",
+        "role": "Supervisão Tática & Distribuição de Tarefas"
+      },
+      "jarvis": {
+        "name": "Jarvis (Operador / Tarefas Rápidas)",
+        "badge_bg": "#DCFCE7",
+        "badge_text": "#166534",
+        "avatar_bg": "linear-gradient(135deg, #15803D 0%, #22C55E 100%)",
+        "border": "#86EFAC",
+        "role": "Cálculos, Scripts & Tarefas Simples"
+      },
+      "aluna": {
+        "name": "Aluna (Web & Front-end Specialist)",
+        "badge_bg": "#FCE7F3",
+        "badge_text": "#9D174D",
+        "avatar_bg": "linear-gradient(135deg, #BE185D 0%, #EC4899 100%)",
+        "border": "#F472B6",
+        "role": "Gerenciamento do Site, UI & Publicações"
+      },
+      "plus": {
+        "name": "Plus (Pro Simples / Executor Intermediário)",
+        "badge_bg": "#FEF3C7",
+        "badge_text": "#92400E",
+        "avatar_bg": "linear-gradient(135deg, #B45309 0%, #F59E0B 100%)",
+        "border": "#FCD34D",
+        "role": "Execução Analítica & Backup Tático"
+      }
+    }
+  },
+  "typography": {
+    "font_family_heading": "Outfit Variable, sans-serif",
+    "font_family_body": "Plus Jakarta Sans Variable, sans-serif",
+    "font_family_mono": "JetBrains Mono Variable, monospace",
+    "scale_px": {
+      "display": 48,
+      "h1": 36,
+      "h2": 28,
+      "h3": 20,
+      "body": 16,
+      "caption": 14
+    },
+    "rules": {
+      "headings": "Outfit Variable with tracking-tight and font-semibold or font-bold",
+      "body": "Plus Jakarta Sans Variable with leading-relaxed and tracking-normal",
+      "code_and_logs": "JetBrains Mono Variable for delegation payloads, timestamps, token counts, and API telemetry",
+      "subtitles": "Never jump more than 2 Tailwind steps between headings and subtext"
+    }
+  },
+  "entry_surfaces": {
+    "/": "Branded mobile-ready command cockpit — persistent top navigation with bilingual PT/EN toggle & AI brain status bar, responsive 3-column operational layout with interactive Agent Hierarchy tree (Left), Real-time Central Shared Room Stream & Mission Dispatcher (Center), and Live Task Queue with Configurable External Channels & Zero Direct Chat (Right)"
+  },
+  "visual_enhancers": {
+    "tactical_borders": "1px crisp solid borders with 8px radius (rounded-lg) for dashboard panels",
+    "subtle_depth": "box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+    "agent_pulse_indicators": "Subtle green/blue ping animation on active agents working on delegated tasks",
+    "hierarchy_connector_lines": "Subtle SVG branched hierarchy lines (Zero -> Pro -> [Jarvis, Aluna, Plus]) showing delegation flow with animated signal pulses"
+  },
+  "grids_and_layouts": {
+    "dashboard_mode": "Density + scanability (MODE B High Density) with Mobile-first touch tabs",
+    "main_grid": "grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 p-3 sm:p-6 max-w-[1600px] mx-auto pb-20 lg:pb-6",
+    "column_spans": {
+      "left_hierarchy_panel": "col-span-12 lg:col-span-3 space-y-4 sm:space-y-5",
+      "center_mission_stream": "col-span-12 lg:col-span-5 space-y-4 sm:space-y-5",
+      "right_task_channels_chat": "col-span-12 lg:col-span-4 space-y-4 sm:space-y-5"
+    },
+    "tabs_organization": "Clean secondary tabs for switching views between 'Overview Cockpit', 'Sala Compartilhada (All-Hands Stream)', 'Zero Direct Line (Espaço Dedicado)', 'Canais & Web Search', and 'Logs de Delegação'"
+  },
+  "motion": {
+    "delegation_events": "Staggered fade-in & slide-up using motion/react when a new delegation event is dispatched from Zero to Pro and down to worker agents",
+    "status_pills": "Transition ease-out 0.2s on status changes (queued -> working -> done)",
+    "message_stream": "Smooth auto-scroll down on incoming agent messages in the Shared Room",
+    "accessibility": "Respect prefers-reduced-motion; disable intensive animation loops for users with reduced motion preferences"
+  },
+  "accessibility": {
+    "wcag_compliance": "WCAG AA minimum 4.5:1 text-to-background contrast on all panels and agent badges",
+    "focus_states": "focus:ring-2 focus:ring-blue-600 focus:outline-none on all inputs and buttons",
+    "aria_roles": "aria-live='polite' on stream container for screen readers reading live delegation activities",
+    "testing_attributes": "data-testid attributes on every interactive element (e.g. data-testid='mission-input', data-testid='dispatch-mission-btn', data-testid='agent-card-zero', data-testid='channel-whatsapp-toggle', data-testid='lang-toggle-btn')"
+  },
+  "image_urls": {
+    "logos_and_badges": [
+      {
+        "category": "agent_avatars",
+        "description": "Zero, Pro, Jarvis, Aluna, Plus customized SVG avatars generated dynamically with distinct gradients and glowing AI badges"
+      }
+    ]
+  },
+  "internationalization": {
+    "default_language": "pt",
+    "languages": ["pt", "en"],
+    "persisted_in_localstorage": true,
+    "key_translations": {
+      "pt": {
+        "app_title": "QG do Zero",
+        "app_subtitle": "Centro de Comando & Orquestração de Agentes IA",
+        "mission_placeholder": "Digite uma ordem para o Zero (ex: 'Pesquisar notícias de IA e atualizar o site')...",
+        "dispatch_btn": "Enviar Missão ao Zero",
+        "hierarchy_title": "Hierarquia de Comando",
+        "shared_room_title": "Sala Compartilhada dos Agentes",
+        "task_center_title": "Fila de Tarefas & Status",
+        "channels_title": "Canais & Conectividade",
+        "zero_direct_title": "Linha Direta com o Zero",
+        "status_working": "Em execução",
+        "status_done": "Concluído",
+        "status_queued": "Na fila",
+        "status_failed": "Falhou",
+        "web_search_active": "Pesquisa Web Real Ativa",
+        "boss_badge": "Chefe (Você)"
+      },
+      "en": {
+        "app_title": "Zero's HQ",
+        "app_subtitle": "Personal AI-Agent Command & Orchestration Center",
+        "mission_placeholder": "Issue a command to Zero (e.g., 'Research latest AI breakthroughs and update site')...",
+        "dispatch_btn": "Dispatch Mission to Zero",
+        "hierarchy_title": "Command Hierarchy",
+        "shared_room_title": "Agents' Shared Room",
+        "task_center_title": "Task Queue & Status",
+        "channels_title": "Channels & Connectivity",
+        "zero_direct_title": "Direct Line to Zero",
+        "status_working": "Working",
+        "status_done": "Completed",
+        "status_queued": "Queued",
+        "status_failed": "Failed",
+        "web_search_active": "Real Web Search Active",
+        "boss_badge": "Boss (You)"
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. THEME & TYPOGRAPHY: In frontend/src/index.css, import '@fontsource-variable/outfit' and '@fontsource-variable/plus-jakarta-sans'. Configure --font-heading: 'Outfit Variable', sans-serif and --font-sans: 'Plus Jakarta Sans Variable', sans-serif. Default to clean, modern Light Mode with sharp slate borders and high contrast.",
+    "2. MOBILE-FIRST & RESPONSIVE LAYOUT: Implement responsive layouts with touch-friendly 44px+ hit areas and a bottom navigation bar on mobile viewports (<1024px) that lets the user switch between Cockpit, Sala Compartilhada, Tarefas, Linha Direta com Zero, and Canais.",
+    "3. AGENT ARCHITECTURE & ORCHESTRATION: Implement the 5 distinct agents with their exact hierarchy as requested: Zero (Supreme Commander) -> Pro (Tactical Right-Hand) -> [Jarvis (Simple tasks/calc), Aluna (Web manager), Plus (Simpler Pro/analysis)]. Include Chefe/Boss as human user.",
+    "4. REAL-TIME MULTI-AGENT ENGINE: In backend, create models and endpoints for: Missions (user dispatches to Zero), Delegation Events (Zero breaks down & assigns to Pro; Pro delegates subtasks to Jarvis/Aluna/Plus), Shared Room Chat messages (where all 5 agents communicate), Task Queue items with results, Channels configuration (WhatsApp, Facebook placeholders + real Internet Search integration via emergent LLM/web tool), and Zero Direct Chat.",
+    "5. SHARED ROOM & LIVE STREAMING: Build a dedicated agent chat room where messages and system delegation badges appear in chronological order with filter by agent.",
+    "6. EXTERNAL CHANNELS & REAL WEB SEARCH: Implement connection toggles for WhatsApp and Facebook (mocked/simulation with webhook/status indicators) AND a fully working Internet Search channel where Zero/Jarvis performs real web lookups and answers.",
+    "7. ZERO DIRECT SPACE: Dedicated 1-on-1 private chat interface with Zero simulating human boss communicating via phone/voice/chat.",
+    "8. BILINGUAL SUPPORT: Add a clean PT/EN toggle in the top header with instant i18n switching for all labels, placeholders, and tooltips, adhering to Brazilian Portuguese locale conventions by default.",
+    "9. AUTOMATED TESTING SUPPORT: Add unambiguous data-testid attributes to all interactive elements (buttons, inputs, filters, channel switches, message boxes)."
+  ]
+}
