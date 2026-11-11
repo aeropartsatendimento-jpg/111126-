@@ -26,6 +26,15 @@ STEP_BLUEPRINTS = [
     ("delivery", "Consolidando a entrega"),
 ]
 
+ACTION_LABELS = {
+    "open": "Abrir página",
+    "read": "Ler conteúdo",
+    "click": "Clicar",
+    "write": "Escrever",
+    "copy": "Copiar",
+    "paste": "Colar",
+}
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -53,6 +62,32 @@ def _detail(step_key: str, mission: dict) -> str:
     return details[step_key]
 
 
+def _action_target(action_type: str, url: str, objective: str) -> str:
+    targets = {
+        "open": url,
+        "read": f"conteúdo visível relacionado a “{objective[:120]}”",
+        "click": "controle necessário para avançar na jornada",
+        "write": "campo de entrada relacionado ao objetivo",
+        "copy": "resultado principal identificado na simulação",
+        "paste": "campo de destino da jornada simulada",
+    }
+    return targets[action_type]
+
+
+def _action_output(action_type: str, mission: dict) -> str:
+    host = urlparse(mission["url"]).netloc
+    objective = mission["objective"]
+    outputs = {
+        "open": f"Abertura simulada de {host}; nenhuma conexão externa foi realizada.",
+        "read": "Leitura simulada concluída sem capturar conteúdo do site real.",
+        "click": "Clique simulado registrado; nenhum controle real foi acionado.",
+        "write": f"Escrita simulada preparada para o objetivo: {objective[:160]}",
+        "copy": "Conteúdo sintético colocado na área de transferência simulada.",
+        "paste": "Conteúdo sintético colado no campo de destino simulado.",
+    }
+    return outputs[action_type]
+
+
 async def run_visual_mission(mission_id: str) -> None:
     mission = await db.visual_missions.find_one({"id": mission_id})
     if not mission:
@@ -75,10 +110,25 @@ async def run_visual_mission(mission_id: str) -> None:
                 {"$set": {"steps": steps, "updated_at": _now()}},
             )
 
+        actions = mission.get("actions", [])
+        for index, action in enumerate(actions):
+            await asyncio.sleep(0.45)
+            actions[index] = {
+                **action,
+                "status": "completed",
+                "output": _action_output(action["type"], mission),
+            }
+            await db.visual_missions.update_one(
+                {"id": mission_id},
+                {"$set": {"actions": actions, "updated_at": _now()}},
+            )
+
         host = urlparse(mission["url"]).netloc
         result = (
             f"[MODO SIMULADO] Missão visual planejada para {host}. "
             f"Objetivo: {mission['objective']}\n\n"
+            f"{len(actions)} ação(ões) simulada(s): "
+            f"{', '.join(ACTION_LABELS[action['type']] for action in actions)}.\n\n"
             "Nenhum site foi aberto e nenhuma conta foi acessada. "
             "Para execução real, conecte e autorize o navegador/MCP da VPS."
         )
@@ -125,6 +175,14 @@ async def create_visual_mission(input: VisualMissionCreate):
         url=input.url,
         objective=input.objective,
         steps=[{"key": key, "label": label} for key, label in STEP_BLUEPRINTS],
+        actions=[
+            {
+                "type": action_type,
+                "label": ACTION_LABELS[action_type],
+                "target": _action_target(action_type, input.url, input.objective),
+            }
+            for action_type in input.action_types
+        ],
     )
     await db.visual_missions.insert_one(mission.model_dump())
     spawn(run_visual_mission(mission.id))

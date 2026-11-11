@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clock3, Monitor, Play, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Check, Clock3, Copy, Eye, ExternalLink, Keyboard, Monitor, MousePointerClick, Play, ShieldCheck, TriangleAlert, ClipboardPaste } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import type { VisualMission } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -29,11 +30,23 @@ function statusTone(status: string): string {
   return "border-blue-200 bg-blue-50 text-blue-700";
 }
 
+const ACTION_TYPES = ["open", "read", "click", "write", "copy", "paste"] as const;
+
+function ActionIcon({ type }: { type: string }) {
+  if (type === "open") return <ExternalLink className="size-4" />;
+  if (type === "read") return <Eye className="size-4" />;
+  if (type === "click") return <MousePointerClick className="size-4" />;
+  if (type === "write") return <Keyboard className="size-4" />;
+  if (type === "copy") return <Copy className="size-4" />;
+  return <ClipboardPaste className="size-4" />;
+}
+
 export default function VisualBrowser() {
   const { t, lang } = useI18n();
   const queryClient = useQueryClient();
   const [url, setUrl] = useState("");
   const [objective, setObjective] = useState("");
+  const [actionTypes, setActionTypes] = useState<string[]>([...ACTION_TYPES]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: missions, isError, refetch } = useQuery({
@@ -45,7 +58,7 @@ export default function VisualBrowser() {
   const current = list.find((mission) => mission.id === selectedId) ?? list[0];
 
   const create = useMutation({
-    mutationFn: () => apiPost<VisualMission>("/visual/missions", { url: url.trim(), objective: objective.trim() }),
+    mutationFn: () => apiPost<VisualMission>("/visual/missions", { url: url.trim(), objective: objective.trim(), action_types: actionTypes }),
     onSuccess: (mission) => {
       setSelectedId(mission.id);
       setObjective("");
@@ -54,6 +67,14 @@ export default function VisualBrowser() {
     },
     onError: () => toast.error(t("common.error")),
   });
+
+  const toggleAction = (actionType: string) => {
+    setActionTypes((currentTypes) =>
+      currentTypes.includes(actionType)
+        ? currentTypes.filter((item) => item !== actionType)
+        : ACTION_TYPES.filter((item) => [...currentTypes, actionType].includes(item))
+    );
+  };
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-5 p-3 sm:p-6">
@@ -108,11 +129,37 @@ export default function VisualBrowser() {
                   rows={4}
                 />
               </div>
+              <div className="space-y-2" data-testid="visual-action-selector">
+                <div>
+                  <p className="text-xs font-semibold" data-testid="visual-actions-label">{t("visual.actions")}</p>
+                  <p className="text-[11px] text-muted-foreground" data-testid="visual-actions-help">{t("visual.actionsHelp")}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
+                  {ACTION_TYPES.map((actionType) => (
+                    <label
+                      key={actionType}
+                      data-testid={`visual-action-option-${actionType}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border bg-white px-2.5 py-2 text-xs font-medium hover:bg-slate-50"
+                    >
+                      <Checkbox
+                        data-testid={`visual-action-toggle-${actionType}`}
+                        checked={actionTypes.includes(actionType)}
+                        onCheckedChange={() => toggleAction(actionType)}
+                      />
+                      <ActionIcon type={actionType} />
+                      {t(`visual.action.${actionType}`)}
+                    </label>
+                  ))}
+                </div>
+                {actionTypes.length === 0 && (
+                  <p className="text-xs text-red-600" data-testid="visual-actions-required">{t("visual.actionsRequired")}</p>
+                )}
+              </div>
               <Button
                 className="w-full"
                 size="lg"
                 data-testid="visual-run-button"
-                disabled={!validUrl(url.trim()) || objective.trim().length < 3 || create.isPending}
+                disabled={!validUrl(url.trim()) || objective.trim().length < 3 || actionTypes.length === 0 || create.isPending}
                 onClick={() => create.mutate()}
               >
                 <Play className="size-4" />
@@ -224,6 +271,38 @@ export default function VisualBrowser() {
                         </motion.div>
                       );
                     })}
+                  </div>
+
+                  <div className="space-y-3" data-testid="visual-actions-section">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500" data-testid="visual-actions-title">{t("visual.actionPlan")}</p>
+                      <p className="mt-1 text-xs text-muted-foreground" data-testid="visual-actions-disclaimer">{t("visual.actionDisclaimer")}</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2" data-testid="visual-actions-list">
+                      {current.actions.map((action) => {
+                        const complete = action.status === "completed";
+                        return (
+                          <motion.article
+                            key={action.type}
+                            data-testid={`visual-action-${action.type}`}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="rounded-xl border bg-white p-4"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`flex size-8 items-center justify-center rounded-lg ${complete ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>
+                                <ActionIcon type={action.type} />
+                              </span>
+                              <p className="font-heading text-sm font-bold" data-testid={`visual-action-label-${action.type}`}>{t(`visual.action.${action.type}`)}</p>
+                              <span className={`ml-auto size-2 rounded-full ${complete ? "bg-emerald-500" : "animate-pulse bg-blue-500"}`} />
+                            </div>
+                            <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400" data-testid={`visual-action-target-label-${action.type}`}>{t("visual.actionTarget")}</p>
+                            <p className="mt-0.5 break-words text-xs text-slate-600" data-testid={`visual-action-target-${action.type}`}>{action.target}</p>
+                            <p className="mt-2 text-xs leading-relaxed text-muted-foreground" data-testid={`visual-action-output-${action.type}`}>{action.output || t("visual.waiting")}</p>
+                          </motion.article>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {current.result && (

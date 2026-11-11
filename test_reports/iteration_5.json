@@ -1,0 +1,59 @@
+{
+  "iteration": 5,
+  "summary": "New feature: selectable simulated action plan for the Visual Browser (Navegador). 6/6 acceptance criteria covered with 5 new backend test files (persisted/completed actions, no-target-access, invalid plan rejection, default/legacy compatibility, Room summary of only selected actions) plus 1 new browser check for the Chefe's UI selection flow. Full backend suite 26/26 green; browser check passed against the public preview URL.",
+  "passed": 6,
+  "failed": 0,
+  "flaky": 0,
+  "blocked": 0,
+  "test_error": 0,
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "O Chefe escolhe quais ações simuladas entram na missão",
+      "name": "visual-browser-action-selection",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On /navegador (public preview URL): all 6 action checkboxes rendered and checked by default; unchecking all 6 shows 'visual-actions-required' and disables visual-run-button; re-checking exactly open/write/copy re-enables it; submitting created a mission whose stage rendered only visual-action-open/write/copy and NOT read/click/paste (count 0), with visual-mode-badge still shown."
+    },
+    {
+      "criterion": "As seis ações do Zero são persistidas e concluídas",
+      "name": "test_tscheck_visual_actions_persisted.py::test_full_action_plan_persists_and_completes",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /visual/missions with all 6 action_types -> 200, actions created pending in chosen order; polled GET /visual/missions/{id} until status=completed; final actions length 6, order preserved [open,read,click,write,copy,paste], every action status=completed with non-empty label/target/output."
+    },
+    {
+      "criterion": "Nenhuma ação simulada acessa o host alvo",
+      "name": "test_tscheck_visual_no_target_access.py::test_invalid_host_mission_completes_without_network_access + test_visual_module_has_no_http_client_import",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Static check: routers/visual.py source contains no 'import requests/httpx/aiohttp/urllib.request', only urlparse. Functional check: POST with url host 'tscheck-target.invalid' -> mission completes (status=completed) exactly like a real host would, result contains 'MODO SIMULADO' and the .invalid host name, and every action output contains a synthetic/simulated marker."
+    },
+    {
+      "criterion": "A API rejeita planos de ação inválidos",
+      "name": "test_tscheck_visual_invalid_action_types.py::test_unknown_action_type_rejected,test_empty_action_list_rejected,test_duplicate_action_types_rejected",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /visual/missions with action_types=['open','teleport'] -> 422; action_types=[] -> 422; action_types=['open','read','open'] -> 422. Each case confirmed its own fixture URL is absent from a subsequent GET /visual/missions (no mission created). Count-based assertion was first replaced with per-fixture-URL check after discovering xdist runs test modules in parallel (see note)."
+    },
+    {
+      "criterion": "A omissão de action_types mantém compatibilidade",
+      "name": "test_tscheck_visual_action_types_default.py::test_omitting_action_types_defaults_to_six,test_legacy_mission_without_actions_field_serializes_empty_list",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /visual/missions without action_types -> 200, actions default to all 6 in canonical order. Direct pymongo insert of a legacy visual_missions doc lacking the 'actions' key -> GET /visual/missions/{id} returns 200 with actions == [] (no serialization error); fixture doc cleaned up after assertion."
+    },
+    {
+      "criterion": "A entrega na Sala resume somente as ações escolhidas",
+      "name": "test_tscheck_visual_room_summary.py::test_room_summary_lists_only_selected_actions",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /visual/missions with action_types=['open','write','copy'] (3 of 6) -> polled to completed; final.result contains 'MODO SIMULADO', the digit '3', and the 3 chosen labels (Abrir página/Escrever/Copiar). GET /room/messages located the matching delivery message by objective prefix; its action-plan sentence contains only the 3 chosen labels and none of the 3 excluded ones (Ler conteúdo/Clicar/Colar)."
+    }
+  ],
+  "bugs": [],
+  "action_items": [
+    "Matrix had 6 criteria; produced exactly 6 checks[] entries (1 browser + 5 backend, criteria 3/4/5/6 each verified by 2 cooperating test functions within their file, listed together per the matrix wording).",
+    "Self-correction note (not a bug): the first draft of test_tscheck_visual_invalid_action_types.py asserted on a global `len(GET /visual/missions)` before/after count and failed once under the repo's pytest-xdist (-n 2 --dist loadscope) because another test module running in a parallel worker created a mission between the two counts. Rewritten to assert on the absence of the test's own fixture URL instead; reran green with the rest of the suite (26/26)."
+  ]
+}

@@ -79,6 +79,14 @@ export interface VisualMissionStep {
   status: string; // pending | completed
 }
 
+export interface VisualBrowserAction {
+  type: string; // open | read | click | write | copy | paste
+  label: string;
+  target: string;
+  status: string; // pending | completed
+  output: string;
+}
+
 export interface VisualMission {
   id: string;
   url: string;
@@ -86,6 +94,7 @@ export interface VisualMission {
   status: string; // queued | running | completed | failed
   mode: string; // simulated
   steps: VisualMissionStep[];
+  actions: VisualBrowserAction[];
   result: string | null;
   created_at: string;
   updated_at: string;

@@ -35,15 +35,15 @@
 | Canais | `[x]` | Cinco canais seed e painel Internet verificados na UI e API |
 | Busca web | `[x]` | Busca e fallback vazio seguro verificados sem quebra da página |
 | Linha Direta/voz | `[~]` | Implementada; voz real depende de navegador compatível e teste manual |
-| Navegador Visual simulado | `[x]` | URL, objetivo, quatro etapas, persistência e publicação na Sala validados 5/5 |
+| Navegador Visual simulado | `[x]` | URL, objetivo, quatro etapas e seis ações selecionáveis validados 6/6 |
 | Concorrência de decisões | `[x]` | Revisões e propostas atômicas, com efeitos idempotentes, validadas sob corrida |
 | Integrações reais | `[!]` | Aguardam URLs, contas, tokens e decisões listadas na seção 6 |
 
 ### Última validação registrada
 
 - Gate local: APIs principais passaram; frontend passou em `yarn typecheck`; envio de missão pela UI passou sem erros de console ou respostas HTTP >= 400.
-- Testing Agent final: `15 passed`, `0 failed`, `0 blocked`, `retest_needed=false` em `test_reports/iteration_2.json`.
-- O bloqueio de seed da primeira rodada foi resolvido e a regressão completa ficou verde.
+- Testing Agent do Navegador: `6 passed`, `0 failed`, `0 blocked`, `retest_needed=false` em `test_reports/iteration_5.json`.
+- Suíte backend completa: **26/26**; seleção, persistência, compatibilidade e ausência de tráfego ao alvo ficaram verdes.
 - O fallback de IA está **SIMULADO** quando `EMERGENT_LLM_KEY` não está configurada.
 
 ## 3. Concluído — microtarefas já entregues
@@ -114,8 +114,12 @@
 - [x] Rotular toda a jornada e o resultado como **MODO SIMULADO**.
 - [x] Publicar a entrega simulada na Sala Compartilhada.
 - [x] Validar API, erro de URL, persistência, ausência de acesso ao alvo e jornada completa no navegador.
+- [x] Adicionar seleção das ações abrir, ler, clicar, escrever, copiar e colar.
+- [x] Persistir alvo, estado e saída sintética de cada ação na missão visual.
+- [x] Validar ações selecionadas, rejeição de ação inválida e ausência de tráfego para o host alvo.
 
 Evidência: `test_reports/iteration_3.json` — 5/5 critérios do Navegador aprovados; suíte backend 15/15.
+Evidência atual: `test_reports/iteration_5.json` — 6/6 critérios das ações aprovados; suíte backend 26/26.
 
 ## 4. P0 — desbloqueio concluído
 

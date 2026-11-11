@@ -117,6 +117,14 @@ class VisualMissionStep(BaseModel):
     status: str = "pending"  # pending | completed
 
 
+class VisualBrowserAction(BaseModel):
+    type: str  # open | read | click | write | copy | paste
+    label: str
+    target: str
+    status: str = "pending"  # pending | completed
+    output: str = ""
+
+
 class VisualMission(BaseModel):
     id: str = Field(default_factory=new_id)
     url: str
@@ -124,6 +132,7 @@ class VisualMission(BaseModel):
     status: str = "queued"  # queued | running | completed | failed
     mode: str = "simulated"
     steps: list[VisualMissionStep] = Field(default_factory=list)
+    actions: list[VisualBrowserAction] = Field(default_factory=list)
     result: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -132,6 +141,11 @@ class VisualMission(BaseModel):
 class VisualMissionCreate(BaseModel):
     url: str = Field(min_length=8, max_length=2048)
     objective: str = Field(min_length=3, max_length=1000)
+    action_types: list[str] = Field(
+        default_factory=lambda: ["open", "read", "click", "write", "copy", "paste"],
+        min_length=1,
+        max_length=6,
+    )
 
     @field_validator("url")
     @classmethod
@@ -146,6 +160,16 @@ class VisualMissionCreate(BaseModel):
     @classmethod
     def trim_objective(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("action_types")
+    @classmethod
+    def validate_action_types(cls, values: list[str]) -> list[str]:
+        allowed = {"open", "read", "click", "write", "copy", "paste"}
+        if any(value not in allowed for value in values):
+            raise ValueError("action_types contains an unsupported browser action")
+        if len(values) != len(set(values)):
+            raise ValueError("action_types must not contain duplicates")
+        return values
 
 
 class SearchCreate(BaseModel):

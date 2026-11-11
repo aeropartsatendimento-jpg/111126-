@@ -31,8 +31,9 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
    fala novas respostas via speechSynthesis (toggle de voz). Fallbacks silenciosos quando a API
    não existe no navegador.
 5. **Navegador Visual simulado**: `/navegador` recebe URL + objetivo, persiste uma missão visual,
-   exibe quatro etapas e publica a entrega na Sala. É sempre rotulado **MODO SIMULADO** e não faz
-   requisição ao site alvo, não abre login e não usa cookies/contas.
+   exibe quatro etapas, executa um plano selecionável de ações `abrir|ler|clicar|escrever|copiar|colar`
+   e publica a entrega na Sala. É sempre rotulado **MODO SIMULADO** e não faz requisição ao site alvo,
+   não abre login e não usa cookies/contas.
 
 ## Projetos, contas e entregas verificáveis (rodada 3)
 - **Projetos** (`/projetos`): ficha de retomada = objetivo atual, última entrega verificada, em andamento,
@@ -74,7 +75,8 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - **facebook**: atendimento/publicações da loja — placeholder (page_url).
 - **internet**: conectado, busca real funcionando.
 - **visual**: Navegador Visual simulado funcional no QG; a conexão real futura mapeará o MCP de contas
-  (/index, zero-private-room). Nenhuma missão atual abre site ou conta real.
+  (/index, zero-private-room). As ações abrir/ler/clicar/escrever/copiar/colar são registradas com alvo e
+  resultado sintéticos; nenhuma missão atual abre site ou conta real.
 - **mcp**: conectar aos MCPs da VPS (zero-mcp, private-room) — aguarda URL do Chefe — placeholder.
 - Painel "Infraestrutura do Chefe" (estático): VPS, MCP, SSH, sala tmux — já existem.
 
