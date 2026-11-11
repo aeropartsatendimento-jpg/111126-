@@ -132,6 +132,21 @@ export interface BriefingSettings {
   city: string;
 }
 
+export interface CronWebhookEnvelope {
+  event: "schedule.triggered";
+  schedule_id: string;
+  run_id: string | null;
+  dispatch_time: string | null;
+  job_id: string | null;
+  data: null;
+}
+
+export interface CronWebhookAck {
+  accepted: boolean;
+  duplicate: boolean;
+  run_id: string;
+}
+
 export interface Project {
   id: string;
   name: string;

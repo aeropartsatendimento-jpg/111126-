@@ -29,7 +29,7 @@
 | Missões e delegação | `[x]` | POST de missão, criação de tarefas e publicação na Sala testados |
 | Revisão de entregas | `[x]` | Aprovação e rejeição/409 validadas pela UI e API |
 | Sala Compartilhada | `[x]` | Mensagem do Chefe e resposta assíncrona do Zero validadas |
-| Briefing manual | `[x]` | Criação e publicação na Sala validadas |
+| Briefing manual e rotina gerenciada | `[x]` | Webhook autenticado, agendamento e botão manual validados |
 | Projetos e retomada | `[x]` | Criar, editar e retomar projeto validados |
 | Painel AeroPartz | `[x]` | Criar, alternar status e remover item validados |
 | Canais | `[x]` | Cinco canais seed e painel Internet verificados na UI e API |
@@ -44,6 +44,7 @@
 - Gate local: APIs principais passaram; frontend passou em `yarn typecheck`; envio de missão pela UI passou sem erros de console ou respostas HTTP >= 400.
 - Testing Agent do Navegador: `6 passed`, `0 failed`, `0 blocked`, `retest_needed=false` em `test_reports/iteration_5.json`.
 - Suíte backend completa: **26/26**; seleção, persistência, compatibilidade e ausência de tráfego ao alvo ficaram verdes.
+- Testing Agent da rotina gerenciada: **7/7 critérios** e suíte backend **36/36** em `test_reports/iteration_7.json`.
 - O fallback de IA está **SIMULADO** quando `EMERGENT_LLM_KEY` não está configurada.
 
 ## 3. Concluído — microtarefas já entregues
@@ -152,13 +153,15 @@ Evidência: `test_reports/iteration_4.json` — corrida de revisão/proposta apr
 
 ### P1.2 — Tornar a rotina automática resistente a reinícios
 
-- [ ] Carregar a skill `scheduled-recurring-tasks` antes de alterar o agendamento.
-- [ ] Criar webhook interno autenticado para disparar `maybe_run_briefing` rapidamente.
-- [ ] Adicionar `.emergent/crons.yml` com timezone `America/Sao_Paulo` e frequência adequada.
-- [ ] Validar bearer secret pelo padrão da skill e manter o processamento idempotente por dia.
-- [ ] Remover o loop em memória somente após o cron gerenciado estar validado.
-- [ ] Testar `auto=false`, horário futuro, execução do dia e repetição no mesmo dia.
-- [ ] Critério de aceite: reiniciar o backend não perde nem duplica o briefing diário.
+- [x] Carregar a skill `scheduled-recurring-tasks` antes de alterar o agendamento.
+- [x] Criar webhook interno autenticado para disparar `maybe_run_briefing` rapidamente.
+- [x] Adicionar `.emergent/crons.yml`; roda a cada 30 min em UTC e avalia o horário configurável em `America/Sao_Paulo` no backend.
+- [x] Validar bearer secret pelo padrão da skill e manter o processamento idempotente por dia.
+- [x] Remover o loop em memória somente após o cron gerenciado estar validado.
+- [x] Testar `auto=false`, horário futuro, execução do dia e repetição no mesmo dia.
+- [x] Critério de aceite: reiniciar o backend não perde nem duplica o briefing diário.
+
+Evidência: `test_reports/iteration_7.json` — 7/7 critérios da rotina e suíte backend 36/36; botão manual aprovado no navegador.
 
 ### P1.3 — Estados de erro e recuperação visíveis
 

@@ -23,13 +23,9 @@ from lib.db import client, db, ensure_indexes
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.index_task = asyncio.create_task(ensure_indexes())  # background: a big index build must not block boot
-    from lib.scheduler import briefing_loop
-    app.state.briefing_task = asyncio.create_task(briefing_loop())  # daily morning routine
     yield
-    app.state.briefing_task.cancel()
     app.state.index_task.cancel()  # stop a build still running before its client closes
     with suppress(asyncio.CancelledError):
-        await app.state.briefing_task
         await app.state.index_task
     client.close()
 
@@ -71,6 +67,7 @@ async def get_status_checks():
 from routers.agents import router as agents_router
 from routers.briefing import router as briefing_router
 from routers.channels import router as channels_router
+from routers.cron import router as cron_router
 from routers.memories import router as memories_router
 from routers.mcp import router as mcp_router
 from routers.missions import router as missions_router
@@ -85,6 +82,7 @@ from routers.zero import router as zero_router
 api_router.include_router(agents_router)
 api_router.include_router(briefing_router)
 api_router.include_router(channels_router)
+api_router.include_router(cron_router)
 api_router.include_router(mcp_router)
 api_router.include_router(memories_router)
 api_router.include_router(missions_router)

@@ -6,7 +6,7 @@ keep the two in sync in the same edit (nothing infers across the boundary).
 
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
@@ -212,6 +212,21 @@ class BriefingSettingsOut(BaseModel):
     auto: bool = True
     hour: int = 7
     city: str = "São Paulo"
+
+
+class CronWebhookEnvelope(BaseModel):
+    event: Literal["schedule.triggered"]
+    schedule_id: str = Field(min_length=1, max_length=100)
+    run_id: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    dispatch_time: Optional[str] = None
+    job_id: Optional[str] = None
+    data: None = None
+
+
+class CronWebhookAck(BaseModel):
+    accepted: bool = True
+    duplicate: bool = False
+    run_id: str
 
 
 class TaskReview(BaseModel):

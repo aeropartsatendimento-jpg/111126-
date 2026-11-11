@@ -1,0 +1,66 @@
+{
+  "iteration": 7,
+  "summary": "Retest of the briefing cron webhook feature after seed reapplication (GET /api/channels now returns exactly whatsapp, facebook, internet, visual, mcp). Re-ran the full backend suite (36/36 passed, including the two channel tests that were previously failing/out-of-scope due to empty channels) and re-ran the existing manual-briefing-button browser check by name only against the public preview URL. All 7 acceptance criteria remain green; no application code changes made.",
+  "passed": 7,
+  "failed": 0,
+  "flaky": 0,
+  "blocked": 0,
+  "test_error": 0,
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "O webhook do briefing exige autenticação e valida o envelope",
+      "name": "test_tscheck_cron_webhook_auth.py::test_missing_auth_returns_401_and_no_dispatch,test_wrong_token_returns_401_and_no_dispatch,test_invalid_json_body_returns_400,test_unexpected_schedule_id_returns_400",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Re-run: 36 passed in 21.90s (full suite, pytest -q -p no:cacheprovider). No Authorization -> 401 and no dispatch doc; wrong Bearer token -> 401; valid secret + invalid JSON -> 400; valid secret + schedule_id='not-morning-briefing' -> 400 and no dispatch doc created. Secret read via os.environ from backend/.env, never printed."
+    },
+    {
+      "criterion": "Uma entrega válida recebe confirmação rápida e duplicatas são idempotentes",
+      "name": "test_tscheck_cron_webhook_delivery.py::test_valid_delivery_accepted_and_duplicate_is_idempotent,test_duplicate_via_run_id_without_header_is_also_idempotent",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Re-run included in the 36-passed suite run. Valid webhook delivery -> 202 {accepted:true,duplicate:false}; replay of same X-Webhook-Id / run_id -> 202 {duplicate:true}; cron_runs count for dispatch:<run_id> stayed at 1. Fixture rows deleted by test teardown."
+    },
+    {
+      "criterion": "A configuração auto=false impede o briefing automático",
+      "name": "test_tscheck_cron_scheduling.py::test_auto_false_skips_automatic_briefing",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Re-run included in the 36-passed suite run. auto=false -> delivery completed with outcome=skipped, no briefing/message created; /briefing/settings restored to original values and verified equal afterward."
+    },
+    {
+      "criterion": "Um horário futuro impede execução antecipada",
+      "name": "test_tscheck_cron_scheduling.py::test_future_hour_skips_early_run",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Re-run included in the 36-passed suite run. Future valid hour in America/Sao_Paulo set via PATCH; delivery completed with outcome=skipped; settings restored to original afterward."
+    },
+    {
+      "criterion": "O briefing devido é criado uma única vez por dia",
+      "name": "test_tscheck_cron_scheduling.py::test_due_briefing_created_at_most_once_per_day",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Re-run included in the 36-passed suite run. Two distinct tscheck- run_ids both acked 202 non-duplicate and completed; db.briefings count for auto-briefing-<today> stayed at 1 and room_messages count for room-auto-briefing-<today> stayed at 1. Only tscheck- dispatch rows deleted; shared daily docs left untouched; settings restored."
+    },
+    {
+      "criterion": "Falha recuperável não duplica a entrega diária",
+      "name": "test_tscheck_cron_scheduling.py::test_failed_marker_recovers_without_duplicating",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Re-run included in the 36-passed suite run. Marker flipped to status=failed, then a valid webhook recovered the lease to completed; briefing/room_messages counts and content unchanged vs pre-test snapshot (no duplicate). Marker and settings restored to original values; dispatch fixture row deleted."
+    },
+    {
+      "criterion": "O botão manual continua independente e funcional",
+      "name": "test_tscheck_briefing_run.py::test_briefing_run_now_creates_entry_and_room_message + briefing-manual-run-button",
+      "lane": "backend+browser",
+      "status": "passed",
+      "evidence": "Backend: included in the 36-passed suite run (POST /api/briefing/run with no cron secret -> 200, day/content populated, room message kind=briefing present). Browser: re-ran the persisted check 'briefing-manual-run-button' by name against the public preview URL -> PASSED, clicked data-testid=briefing-run-btn with no cron secret in browser session, briefing-latest card rendered, kind=briefing message count did not regress."
+    }
+  ],
+  "bugs": [],
+  "action_items": [
+    "Previously flagged out-of-scope failures (test_tscheck_channel_search.py::test_channel_config_persists and ::test_channel_update_invalid_status_rejected) are now resolved: GET /api/channels returns exactly whatsapp, facebook, internet, visual, mcp per the reapplied seed, and the full suite is 36/36 green. No remaining action items for this iteration.",
+    "WEBHOOK_CRON_SECRET continues to be read only via os.environ from backend/.env at test runtime; never printed in any report, screenshot, or log."
+  ]
+}

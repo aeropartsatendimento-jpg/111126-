@@ -86,6 +86,7 @@ android-sdk/
 
 # overlay black-box crash/user-report dumps — session data, never history
 **/.emergent/recordings/
+.emergent/cron/
 .env
 .env.*
 *.env

@@ -1,0 +1,8 @@
+crons:
+  - name: morning-briefing
+    description: "Verifica a cada 30 minutos se o briefing diário configurado deve ser criado"
+    cron: "*/30 * * * *"
+    endpoint: "{{BASE_URL}}/api/cron/briefing"
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    method: POST
+    enabled: true

@@ -1,0 +1,67 @@
+{
+  "iteration": 6,
+  "summary": "New feature: authenticated briefing cron webhook (/api/cron/briefing) with idempotent daily scheduling. 7/7 acceptance criteria covered with 4 new backend test files (auth/envelope validation, delivery+idempotency, consolidated scheduling-decision suite for auto=false/future-hour/once-per-day/failure-recovery) plus 1 new browser check for the still-independent manual briefing button. Full backend suite 34/36 green (2 pre-existing, out-of-scope failures unrelated to this feature); browser check passed against the public preview URL. Settings and shared daily markers were read, exercised, and restored to their original values at the end of every test.",
+  "passed": 7,
+  "failed": 0,
+  "flaky": 0,
+  "blocked": 0,
+  "test_error": 0,
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "O webhook do briefing exige autenticação e valida o envelope",
+      "name": "test_tscheck_cron_webhook_auth.py::test_missing_auth_returns_401_and_no_dispatch,test_wrong_token_returns_401_and_no_dispatch,test_invalid_json_body_returns_400,test_unexpected_schedule_id_returns_400",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/cron/briefing with no Authorization -> 401, no dispatch:<id> doc created; with Authorization: Bearer <wrong> -> 401, no dispatch doc; with valid secret + invalid JSON body -> 400; with valid secret + schedule_id='not-morning-briefing' -> 400 and no dispatch doc. Secret loaded from backend/.env via WEBHOOK_CRON_SECRET at runtime, never printed."
+    },
+    {
+      "criterion": "Uma entrega válida recebe confirmação rápida e duplicatas são idempotentes",
+      "name": "test_tscheck_cron_webhook_delivery.py::test_valid_delivery_accepted_and_duplicate_is_idempotent,test_duplicate_via_run_id_without_header_is_also_idempotent",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "POST /api/cron/briefing with event=schedule.triggered, schedule_id=morning-briefing, unique tscheck- run_id -> 202 {accepted:true,duplicate:false,run_id}; replaying same X-Webhook-Id (or same run_id with no header) -> 202 {duplicate:true}; cron_runs count for dispatch:<run_id> stayed 1 after replay in both header and run_id-only paths. Dispatch fixture rows deleted in test teardown."
+    },
+    {
+      "criterion": "A configuração auto=false impede o briefing automático",
+      "name": "test_tscheck_cron_scheduling.py::test_auto_false_skips_automatic_briefing",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Read original /briefing/settings, PATCH auto=false -> 200; valid webhook delivery -> 202 non-duplicate; polled cron_runs dispatch doc to status=completed with outcome=skipped. Settings PATCHed back to the exact original values in finally and verified equal; dispatch fixture row deleted."
+    },
+    {
+      "criterion": "Um horário futuro impede execução antecipada",
+      "name": "test_tscheck_cron_scheduling.py::test_future_hour_skips_early_run",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Current America/Sao_Paulo hour was 20, so hour=21 is a valid future hour (<=23). PATCH auto=true,hour=21 -> 200; valid webhook delivery -> 202 non-duplicate; polled dispatch doc to status=completed with outcome=skipped. Settings restored to original afterward. (Not-applicable branch only triggers via pytest.skip when current hour==23, which did not occur in this run.)"
+    },
+    {
+      "criterion": "O briefing devido é criado uma única vez por dia",
+      "name": "test_tscheck_cron_scheduling.py::test_due_briefing_created_at_most_once_per_day",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "PATCH auto=true,hour=<current hour> (due now) -> 200; fired two distinct tscheck- run_ids through /api/cron/briefing, both acked 202 non-duplicate and polled to status=completed (outcome created-or-skipped); afterward db.briefings.count({id:'auto-briefing-<today>',day:<today>})==1 and db.room_messages.count({id:'room-auto-briefing-<today>'})==1, proving no duplicate was produced across two valid deliveries the same day. Only the two tscheck- dispatch rows were deleted; the shared daily briefing/marker were left untouched. Settings restored to original."
+    },
+    {
+      "criterion": "Falha recuperável não duplica a entrega diária",
+      "name": "test_tscheck_cron_scheduling.py::test_failed_marker_recovers_without_duplicating",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "Snapshotted today's real cron_runs marker (briefing-day:<today>, status=completed) and briefings doc (auto-briefing-<today>); flipped marker status to 'failed' to simulate a crash; fired one valid webhook which recovered the lease (dispatch completed); asserted marker status returned to 'completed', briefings/room_messages counts for the auto id stayed at 1 (no duplicate), and the briefing content/created_at were unchanged (same doc reused) vs. the pre-test snapshot. Marker status/lease_until and settings restored to their exact original values in finally; dispatch fixture row deleted."
+    },
+    {
+      "criterion": "O botão manual continua independente e funcional",
+      "name": "test_tscheck_briefing_run.py::test_briefing_run_now_creates_entry_and_room_message + briefing-manual-run-button",
+      "lane": "backend+browser",
+      "status": "passed",
+      "evidence": "Backend: POST /api/briefing/run (no cron secret header) -> 200 with day/content populated and a room message kind=briefing present. Browser (public preview URL): clicked data-testid=briefing-run-btn on the Cockpit page with no auth/cron secret in the browser session; briefing-latest card rendered afterward and GET /api/room_messages confirmed the kind=briefing message count did not regress (stayed >=1), confirming the manual path works independent of the webhook secret."
+    }
+  ],
+  "bugs": [],
+  "action_items": [
+    "Matrix had 7 criteria; produced exactly 7 checks[] entries (4 dedicated backend test files + 1 reused existing manual-run backend test + 1 browser check; criteria 3/4/5/6 cooperate inside one module, test_tscheck_cron_scheduling.py, by design: they all mutate the single shared /briefing/settings document and pytest.ini pins `--dist loadscope`, so splitting them into separate files would have let two xdist workers race on the same settings doc. An earlier draft with 4 separate files was observed leaving /briefing/settings.hour=20 instead of the original 7 after a parallel run; consolidating into one module fixed it and was re-verified clean (settings read back equal to {auto:true,hour:7,city:'São Paulo'} after the full suite).",
+    "Out-of-scope, pre-existing (not part of this iteration's acceptance_matrix): tests/test_tscheck_channel_search.py::test_channel_config_persists and ::test_channel_update_invalid_status_rejected fail because GET /api/channels currently returns [] (no seeded channels) in this environment. Reproduced on two runs (not flaky). Flagging for visibility only; not counted against this iteration's pass/fail since it predates and is unrelated to the cron webhook/briefing feature under test this round.",
+    "WEBHOOK_CRON_SECRET was read only via os.environ after load_dotenv(backend/.env) inside test files, matching the app's own loading pattern; the value itself never appears in any report, screenshot, or log."
+  ]
+}

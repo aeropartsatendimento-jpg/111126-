@@ -2,8 +2,8 @@
 
 ## Resumo
 
-O núcleo do QG está funcional e validado em modo simulado. A rodada mais recente ampliou o Navegador Visual
-com ações selecionáveis do Zero e manteve a garantia de que nenhum site alvo é acessado.
+O núcleo do QG está funcional e validado em modo simulado. A rodada mais recente migrou a Rotina da Manhã
+do loop em memória para cron gerenciado, com webhook autenticado, confirmação rápida e idempotência persistida.
 
 ## Pronto e testado
 
@@ -23,6 +23,8 @@ com ações selecionáveis do Zero e manteve a garantia de que nenhum site alvo 
 - Seleção das ações simuladas: **abrir, ler, clicar, escrever, copiar e colar**.
 - Persistência de tipo, alvo, status e saída de cada ação.
 - Compatibilidade com missões visuais antigas sem o campo `actions`.
+- Rotina automática resistente a reinícios, respeitando `auto`, horário configurável e `America/Sao_Paulo`.
+- Entregas repetidas do cron e retomadas após falha não duplicam briefing nem mensagem na Sala.
 
 ## Garantias do Navegador Visual atual
 
@@ -35,8 +37,9 @@ com ações selecionáveis do Zero e manteve a garantia de que nenhum site alvo 
 
 ## Evidências mais recentes
 
+- `test_reports/iteration_7.json`: **7/7 critérios aprovados**; suíte backend completa **36/36**.
+- Gate local: autenticação/validação/duplicata do webhook, TypeScript e jornada Cockpit → Sala aprovados.
 - `test_reports/iteration_5.json`: **6/6 critérios aprovados**, sem falhas ou bloqueios.
-- Suíte backend completa: **26/26 aprovada**.
 - `test_reports/iteration_4.json`: concorrência de revisão/proposta aprovada.
 - `test_reports/iteration_3.json`: fluxo original do Navegador Visual aprovado.
 - TypeScript e gate de navegador passaram sem erros de console ou HTTP inesperados.
@@ -52,10 +55,18 @@ com ações selecionáveis do Zero e manteve a garantia de que nenhum site alvo 
 ## Próximos passos de maior valor
 
 1. Tornar missões/jobs recuperáveis após reinício do backend.
-2. Migrar a rotina da manhã para agendamento gerenciado e idempotente.
-3. Diferenciar dados vazios, backend indisponível e cache antigo em cada painel.
-4. Detalhar e depois conectar o navegador real da VPS, começando em modo somente leitura.
-5. Validar mobile, teclado e acessibilidade das jornadas essenciais.
+2. Diferenciar dados vazios, backend indisponível e cache antigo em cada painel.
+3. Detalhar e depois conectar o navegador real da VPS, começando em modo somente leitura.
+4. Validar mobile, teclado e acessibilidade das jornadas essenciais.
+
+## Registro de continuidade — 11/11/2026
+
+- Tarefa: P1.2 concluída.
+- Arquivos principais: `.emergent/crons.yml`, `backend/routers/cron.py`, `backend/lib/scheduler.py`,
+  `backend/lib/orchestrator.py`, `backend/server.py`, contratos e índices.
+- Testes: gate local aprovado; Testing Agent 7/7; suíte backend 36/36; navegador aprovado.
+- Ambiente: seed idempotente reaplicado; agentes, canais, projetos e exemplos restaurados sem apagar dados existentes.
+- Próximo passo exato: iniciar P1.3, estados de erro e recuperação visíveis.
 
 ## Referências
 

@@ -23,8 +23,9 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
    → mensagem `delegation` na sala → cada task `queued→working→review` com resultado do LLM do agente
    (mensagem `chat`) → `system/summary` fecha. Fallback simulado marcado "(modo simulado)".
 2. **Rotina da Manhã**: briefing diário com clima de **busca real** + checklist AeroPartz (caixa,
-   estoque crítico, pedidos, cupons), prioridades e lembretes. Scheduler em `lib/scheduler.py`
-   (loop 30 min; roda 1x/dia após a hora configurada, tz America/Sao_Paulo; padrão 07:00, auto on).
+   estoque crítico, pedidos, cupons), prioridades e lembretes. Cron gerenciado a cada 30 minutos chama
+   webhook interno autenticado; `lib/scheduler.py` decide pelo horário configurado em America/Sao_Paulo
+   e usa trava diária persistida (padrão 07:00, auto on), sobrevivendo a reinícios sem duplicar.
    Botão "Rodar agora" no Cockpit. Mensagem na sala com kind `briefing`.
 3. **Sala**: `POST /room/messages` do Chefe → Zero responde em background.
 4. **Linha direta com voz**: `/zero` — microfone via Web Speech API (STT pt-BR, botão mic) e Zero
@@ -66,6 +67,7 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - `POST/GET /missions` · `GET /tasks?agent_key=&status=&mission_id=`
 - `GET/POST /room/messages` · `GET /zero/messages` `POST /zero/chat`
 - `GET /briefing` · `GET/PATCH /briefing/settings` (auto/hour/city) · `POST /briefing/run`
+- `POST /cron/briefing` (interno, Bearer `WEBHOOK_CRON_SECRET`, confirmação rápida e idempotente por execução)
 - `GET /channels` `PATCH /channels/{id}` · `POST /channels/internet/search` (**busca real** DuckDuckGo HTML, sem chave, [] em falha)
 - `GET/POST /visual/missions` · `GET /visual/missions/{id}` (simulação persistida, sem acesso ao alvo)
 - Coleções: agents, missions, tasks, room_messages, zero_messages, channels, briefings, settings (+status_checks) — INDEXES em `lib/db.py`.

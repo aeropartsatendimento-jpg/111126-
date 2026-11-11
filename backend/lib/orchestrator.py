@@ -417,8 +417,23 @@ async def zero_direct_reply() -> None:
     await db.zero_messages.insert_one(msg)
 
 
-async def run_briefing(settings: dict, day: str | None = None) -> dict:
+async def run_briefing(
+    settings: dict,
+    day: str | None = None,
+    idempotency_key: str | None = None,
+) -> dict:
     """Morning routine: real weather search + store panel + projects → Zero's briefing, posted to the room."""
+    if idempotency_key:
+        existing = await db.briefings.find_one({"id": idempotency_key})
+        if existing:
+            await _post_room(
+                "zero",
+                "briefing",
+                f"🌅 Briefing da manhã ({existing['day']} — {existing.get('city', '')}):\n\n{existing['content']}",
+                message_id=f"room-{idempotency_key}",
+            )
+            return existing
+
     city = settings.get("city", "São Paulo")
     hits = await web_search(f"previsão do tempo hoje {city}")
     search_block = "\n".join(f"- {h.title}: {h.snippet[:140]}" for h in hits[:5]) or "(busca indisponível agora)"
@@ -433,7 +448,22 @@ async def run_briefing(settings: dict, day: str | None = None) -> dict:
     if reply is None:
         reply = "[modo simulado] Bom dia, Chefe. Sem nuvem agora: confira o painel da loja e os bloqueios dos projetos."
 
-    doc = {"id": _new_id(), "day": day or today_iso("America/Sao_Paulo"), "city": city, "content": reply, "created_at": _now()}
-    await db.briefings.insert_one(dict(doc))
-    await _post_room("zero", "briefing", f"🌅 Briefing da manhã ({doc['day']} — {city}):\n\n{reply}")
+    doc = {
+        "id": idempotency_key or _new_id(),
+        "day": day or today_iso("America/Sao_Paulo"),
+        "city": city,
+        "content": reply,
+        "created_at": _now(),
+    }
+    if idempotency_key:
+        await db.briefings.update_one({"id": idempotency_key}, {"$setOnInsert": dict(doc)}, upsert=True)
+        doc = await db.briefings.find_one({"id": idempotency_key}) or doc
+    else:
+        await db.briefings.insert_one(dict(doc))
+    await _post_room(
+        "zero",
+        "briefing",
+        f"🌅 Briefing da manhã ({doc['day']} — {doc.get('city', city)}):\n\n{doc['content']}",
+        message_id=f"room-{idempotency_key}" if idempotency_key else None,
+    )
     return doc

@@ -1,20 +1,17 @@
-"""Morning-briefing scheduler.
+"""Idempotent morning-briefing decision logic invoked by the managed cron."""
 
-A background loop ticks every 30 minutes; once per day, after the configured
-hour (America/Sao_Paulo), it runs the briefing if it hasn't run today yet.
-"""
-
-import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
 from lib.orchestrator import run_briefing
 
 logger = logging.getLogger(__name__)
 
-CHECK_INTERVAL_S = 1800
 TZ = ZoneInfo("America/Sao_Paulo")
 
 DEFAULT_SETTINGS = {"auto": True, "hour": 7, "city": "São Paulo"}
@@ -35,18 +32,65 @@ async def maybe_run_briefing(force: bool = False) -> dict | None:
             return None
         if now.hour < int(settings.get("hour", 7)):
             return None
-        last = await db.briefings.find_one(sort=[("created_at", -1)])
-        if last and last.get("day") == today:
+        existing = await db.briefings.find_one({"day": today})
+        auto_id = f"auto-briefing-{today}"
+        if existing and existing.get("id") != auto_id:
             return None
 
-    logger.info("running morning briefing (force=%s, day=%s)", force, today)
-    return await run_briefing(settings, day=today)
-
-
-async def briefing_loop() -> None:
-    while True:
+        now_utc = datetime.now(timezone.utc)
+        lease_until = now_utc + timedelta(minutes=20)
+        marker_id = f"briefing-day:{today}"
+        marker = {
+            "_id": marker_id,
+            "id": marker_id,
+            "kind": "daily-briefing",
+            "day": today,
+            "status": "working",
+            "lease_until": lease_until,
+            "created_at": now_utc,
+            "updated_at": now_utc,
+        }
         try:
-            await maybe_run_briefing()
-        except Exception:
-            logger.exception("briefing tick failed")
-        await asyncio.sleep(CHECK_INTERVAL_S)
+            await db.cron_runs.insert_one(marker)
+        except DuplicateKeyError:
+            claimed = await db.cron_runs.find_one_and_update(
+                {
+                    "_id": marker_id,
+                    "$or": [
+                        {"status": "failed"},
+                        {"status": "working", "lease_until": {"$lte": now_utc}},
+                    ],
+                },
+                {
+                    "$set": {
+                        "status": "working",
+                        "lease_until": lease_until,
+                        "updated_at": now_utc,
+                    }
+                },
+                return_document=ReturnDocument.AFTER,
+            )
+            if not claimed:
+                return None
+
+    logger.info("running morning briefing (force=%s, day=%s)", force, today)
+    try:
+        result = await run_briefing(
+            settings,
+            day=today,
+            idempotency_key=None if force else f"auto-briefing-{today}",
+        )
+    except Exception:
+        if not force:
+            await db.cron_runs.update_one(
+                {"_id": f"briefing-day:{today}"},
+                {"$set": {"status": "failed", "updated_at": datetime.now(timezone.utc)}},
+            )
+        raise
+
+    if not force:
+        await db.cron_runs.update_one(
+            {"_id": f"briefing-day:{today}"},
+            {"$set": {"status": "completed", "updated_at": datetime.now(timezone.utc)}},
+        )
+    return result
