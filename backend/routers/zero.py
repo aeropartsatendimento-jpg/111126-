@@ -5,7 +5,7 @@ import asyncio
 from fastapi import APIRouter, HTTPException
 
 from lib.db import db
-from lib.orchestrator import start_mission, zero_direct_reply
+from lib.orchestrator import remember, start_mission, zero_direct_reply
 from models.models import DirectMessage, ZeroChatCreate, aware
 
 router = APIRouter()
@@ -42,5 +42,6 @@ async def execute_proposal(mid: str):
         raise HTTPException(status_code=409, detail="proposal already executed")
     mission = await start_mission(doc["proposal"], doc.get("project_id"))
     await db.zero_messages.update_one({"id": mid}, {"$set": {"mission_id": mission["id"]}})
+    await remember("decisao_chefe", doc["proposal"][:120], doc["proposal"], "Proposta do Zero aprovada pelo Chefe", doc.get("project_id"))
     doc["mission_id"] = mission["id"]
     return to_msg(doc)

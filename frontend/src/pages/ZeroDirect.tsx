@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Mic, MicOff, Phone, PhoneOff, Play, Send, Volume2, VolumeX } from "lucide-react";
@@ -48,6 +48,8 @@ export default function ZeroDirect() {
   const [listening, setListening] = useState(false);
   const [speakOn, setSpeakOn] = useState(true);
   const [callMode, setCallMode] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const wantsCall = params.get("call") === "1" && !callMode; // opened from the home-screen shortcut
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const spokenRef = useRef<Set<string>>(new Set());
@@ -211,6 +213,17 @@ export default function ZeroDirect() {
           {speakOn ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
         </button>
       </header>
+
+      {wantsCall && (
+        <button
+          data-testid="zero-answer-call-btn"
+          onClick={() => { setParams({}, { replace: true }); toggleCall(); }}
+          className="mb-3 flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 py-6 font-heading text-xl font-bold text-white shadow-lg transition-transform duration-150 active:scale-95"
+        >
+          <Phone className="size-7 animate-pulse" />
+          {t("zero.answer")}
+        </button>
+      )}
 
       {callMode && (
         <div className="mb-3 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2" data-testid="zero-call-banner">

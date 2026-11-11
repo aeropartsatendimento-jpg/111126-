@@ -143,3 +143,25 @@ export interface McpInfo {
   token_configured: boolean;
   tools: string[];
 }
+
+export interface Me {
+  user_id: string;
+  emails: string[];
+  is_owner: boolean;
+}
+
+export interface Owner {
+  email: string;
+}
+
+export interface Memory {
+  id: string;
+  kind: string; // decisao_chefe | fato_verificado | proposta | antiga
+  title: string;
+  content: string;
+  source: string;
+  project_id: string | null;
+  replaces: string | null;
+  superseded_by: string | null;
+  created_at: string;
+}

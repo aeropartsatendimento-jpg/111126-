@@ -241,3 +241,38 @@ class McpInfo(BaseModel):
     path: str
     token_configured: bool
     tools: list[str]
+
+
+class MeOut(BaseModel):
+    user_id: str
+    emails: list[str]
+    is_owner: bool
+
+
+class OwnerIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class OwnerOut(BaseModel):
+    email: str
+
+
+class Memory(BaseModel):
+    id: str = Field(default_factory=new_id)
+    kind: str  # decisao_chefe | fato_verificado | proposta | antiga
+    title: str
+    content: str = ""
+    source: str = ""  # de onde veio (tarefa, conversa, Chefe)
+    project_id: Optional[str] = None
+    replaces: Optional[str] = None
+    superseded_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class MemoryCreate(BaseModel):
+    kind: str
+    title: str = Field(min_length=2, max_length=200)
+    content: str = Field(default="", max_length=3000)
+    source: str = Field(default="", max_length=300)
+    project_id: Optional[str] = None
+    replaces: Optional[str] = None

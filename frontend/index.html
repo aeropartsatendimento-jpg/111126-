@@ -8,6 +8,10 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0B132B" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Zero" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="QG do Zero — centro de comando e orquestração do esquadrão de agentes IA: Zero, Pro, Jarvis, Aluna e Plus, com sala compartilhada, fila de tarefas, canais e busca real na internet." />
     <title>QG do Zero — Centro de Comando de Agentes IA</title>
@@ -15,5 +19,8 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+    </script>
   </body>
 </html>

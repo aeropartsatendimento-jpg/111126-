@@ -131,3 +131,26 @@
     @apply font-sans;
     }
 }
+
+/* ---- Universo ---- */
+.universe-stars {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,0.8), transparent 60%),
+    radial-gradient(1px 1px at 68% 32%, rgba(255,255,255,0.6), transparent 60%),
+    radial-gradient(1.5px 1.5px at 38% 76%, rgba(186,230,253,0.8), transparent 60%),
+    radial-gradient(1px 1px at 84% 84%, rgba(255,255,255,0.5), transparent 60%),
+    radial-gradient(1px 1px at 52% 8%, rgba(255,255,255,0.7), transparent 60%),
+    radial-gradient(1px 1px at 22% 58%, rgba(255,255,255,0.5), transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(37,99,235,0.18), transparent 65%);
+}
+@keyframes universe-twinkle { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes universe-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0.6); } 50% { box-shadow: 0 0 0 10px rgba(52,211,153,0); } }
+@keyframes universe-dash { to { stroke-dashoffset: -24; } }
+@keyframes universe-alert { 0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.55); } 50% { box-shadow: 0 0 0 8px rgba(251,191,36,0); } }
+.universe-twinkle { animation: universe-twinkle 3.2s ease-in-out infinite; transition: transform 0.2s ease-out; }
+.universe-pulse { animation: universe-pulse 1.6s ease-out infinite; }
+.universe-flow { stroke-dasharray: 6 6; animation: universe-dash 0.9s linear infinite; }
+.universe-alert { animation: universe-alert 2s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .universe-twinkle, .universe-pulse, .universe-flow, .universe-alert { animation: none; }
+}

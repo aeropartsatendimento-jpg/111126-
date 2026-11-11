@@ -66,6 +66,8 @@ DIRECT_SYSTEM = (
     "- executando: o Chefe deu uma ORDEM clara (ex: 'faça', 'continue', 'verifique'); você dispara a missão agora (preencha 'mission').\n"
     "Nunca transforme comentário ou pergunta em tarefa. Na dúvida, use propondo.\n"
     "Se o pedido for sobre um projeto da lista, use o id dele em project_id.\n"
+    "Para perguntas 'por que escolhemos X?', responda com a decisão, a DATA e a FONTE da memória, separando "
+    "decisão do Chefe, fato verificado, proposta não aprovada e informação antiga. Se não houver registro, diga que não há.\n"
     "Responda SOMENTE com JSON válido: "
     '{"intent": "explicando|propondo|executando", "reply": "fala curta (máx 90 palavras)", '
     '"mission": "texto da missão ou string vazia", "project_id": "id ou null"}'
@@ -137,6 +139,25 @@ async def project_card(project: dict) -> str:
         f"Bloqueio/decisão: {project.get('blocker') or '—'}\n"
         f"Próximo passo: {project.get('next_step') or '—'}\n"
         f"Resultados recentes:\n{results}"
+    )
+
+
+async def remember(kind: str, title: str, content: str, source: str, project_id: str | None = None) -> None:
+    await db.memories.insert_one({
+        "id": _new_id(), "kind": kind, "title": title[:200], "content": content[:3000], "source": source[:300],
+        "project_id": project_id, "replaces": None, "superseded_by": None, "created_at": _now(),
+    })
+
+
+async def memory_context() -> str:
+    labels = {"decisao_chefe": "DECISÃO DO CHEFE", "fato_verificado": "FATO VERIFICADO", "proposta": "PROPOSTA (não aprovada)", "antiga": "ANTIGA (conferir)"}
+    docs = await db.memories.find().sort("created_at", -1).to_list(25)
+    if not docs:
+        return "(memória vazia)"
+    return "\n".join(
+        f"- [{labels.get(m['kind'], m['kind'])}] {m['created_at'].strftime('%d/%m/%Y')} · {m['title']}: {m.get('content', '')[:160]} "
+        f"(fonte: {m.get('source') or '—'}){' — SUBSTITUÍDA por decisão mais nova' if m.get('superseded_by') else ''}"
+        for m in docs
     )
 
 
@@ -282,6 +303,9 @@ async def review_task(task: dict, approve: bool, note: str | None) -> dict:
             {"id": task["project_id"]},
             {"$set": {"last_verified": f"{task['title']} — {(task.get('result') or '').replace('**', '')[:240]}", "last_verified_at": _now(), "updated_at": _now()}},
         )
+    if approve:
+        await remember("fato_verificado", task["title"], (task.get("result") or "").replace("**", ""),
+                       f"Entrega de {task['agent_key']} aprovada pelo Chefe (tarefa {task['id'][:8]})", task.get("project_id"))
     verdict = "✅ aprovou" if approve else "↩️ devolveu"
     await _post_room("user", "system", f"Chefe {verdict} a entrega \"{task['title']}\"" + (f": {note}" if note else "."), task.get("mission_id"))
     return await db.tasks.find_one({"id": task["id"]})
@@ -308,7 +332,8 @@ async def zero_direct_reply() -> None:
     zero = await _agent("zero") or {}
     raw = await llm_text(
         DIRECT_SYSTEM,
-        f"Projetos:\n{await projects_context()}\n\nPainel da loja:\n{await store_context()}\n\nConversa:\n{transcript}\n\nResponda ao Chefe.",
+        f"Projetos:\n{await projects_context()}\n\nPainel da loja:\n{await store_context()}\n\n"
+        f"Memória (com data e fonte):\n{await memory_context()}\n\nConversa:\n{transcript}\n\nResponda ao Chefe.",
         session_id=f"direct-{_new_id()}", provider=zero.get("provider", "openai"), model=zero.get("model", "gpt-5.4"),
     )
     data = llm_json(raw)
@@ -323,6 +348,9 @@ async def zero_direct_reply() -> None:
             if intent == "executando":
                 mission = await start_mission(mission_text[:1500], pid)
                 msg["mission_id"] = mission["id"]
+                last_user = next((m for m in recent if m.get("role") == "user"), None)
+                await remember("decisao_chefe", mission_text[:120], (last_user or {}).get("content", "")[:1000],
+                               "Ordem do Chefe na Linha Direta", pid)
         elif intent != "explicando":
             msg["intent"] = "explicando"
     elif raw:

@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
-import type { Channel, McpInfo, SearchResponse } from "@/lib/types";
+import type { Channel, McpInfo, Owner, SearchResponse } from "@/lib/types";
+import { apiDelete } from "@/lib/api";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -175,6 +177,52 @@ function ChannelCard({ channel }: { channel: Channel }) {
   );
 }
 
+function OwnersCard() {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const [email, setEmail] = useState("");
+  const { data: owners } = useQuery({ queryKey: ["owners"], queryFn: () => apiGet<Owner[]>("/owners") });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["owners"] });
+  const errMsg = (e: unknown) => {
+    const body = (e as { body?: { detail?: unknown } }).body;
+    return typeof body?.detail === "string" ? body.detail : t("common.error");
+  };
+  const add = useMutation({
+    mutationFn: () => apiPost<Owner>("/owners", { email: email.trim() }),
+    onSuccess: () => { toast.success(t("owners.added")); setEmail(""); refresh(); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  const remove = useMutation({
+    mutationFn: (e: string) => apiDelete<void>(`/owners/${encodeURIComponent(e)}`),
+    onSuccess: () => { toast.success(t("owners.removed")); refresh(); },
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  return (
+    <Card data-testid="owners-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="font-heading text-base">{t("owners.title")}</CardTitle>
+        <CardDescription>{t("owners.sub")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {(owners ?? []).map((o) => (
+          <div key={o.email} data-testid={`owner-item-${o.email}`} className="flex items-center gap-2 rounded-lg border bg-white p-2.5">
+            <span className="min-w-0 flex-1 truncate font-mono text-sm">{o.email}</span>
+            <Button size="icon-sm" variant="ghost" data-testid={`owner-remove-${o.email}`} onClick={() => remove.mutate(o.email)} aria-label="remove">
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        ))}
+        <div className="flex gap-2 pt-1">
+          <Input data-testid="owner-email-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" className="h-9 text-sm" />
+          <Button size="sm" className="h-9" data-testid="owner-add-btn" disabled={!email.includes("@") || add.isPending} onClick={() => add.mutate()}>
+            {t("owners.add")}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function McpServerCard() {
   const { t } = useI18n();
   const { data } = useQuery({ queryKey: ["mcp-info"], queryFn: () => apiGet<McpInfo>("/mcp/info"), refetchInterval: 15000 });
@@ -268,6 +316,7 @@ export default function Channels() {
         ))}
       </div>
 
+      <OwnersCard />
       <McpServerCard />
       <InfraCard />
     </div>
