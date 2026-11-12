@@ -7,10 +7,12 @@ browser/MCP connection exists.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+import uuid
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException
+from pymongo import ReturnDocument
 
 from lib.db import db
 from lib.orchestrator import _post_room, spawn
@@ -89,7 +91,26 @@ def _action_output(action_type: str, mission: dict) -> str:
 
 
 async def run_visual_mission(mission_id: str) -> None:
-    mission = await db.visual_missions.find_one({"id": mission_id})
+    now = _now()
+    mission = await db.visual_missions.find_one_and_update(
+        {
+            "id": mission_id,
+            "status": {"$in": ["queued", "running"]},
+            "$or": [
+                {"lease_until": {"$exists": False}},
+                {"lease_until": {"$lte": now}},
+            ],
+        },
+        {
+            "$set": {
+                "runner_id": uuid.uuid4().hex,
+                "lease_until": now + timedelta(minutes=10),
+                "updated_at": now,
+            },
+            "$inc": {"run_attempts": 1},
+        },
+        return_document=ReturnDocument.AFTER,
+    )
     if not mission:
         return
 
@@ -103,6 +124,8 @@ async def run_visual_mission(mission_id: str) -> None:
 
         steps = mission["steps"]
         for index, step in enumerate(steps):
+            if step.get("status") == "completed":
+                continue
             await asyncio.sleep(0.7)
             steps[index] = {**step, "status": "completed", "detail": _detail(step["key"], mission)}
             await db.visual_missions.update_one(
@@ -112,6 +135,8 @@ async def run_visual_mission(mission_id: str) -> None:
 
         actions = mission.get("actions", [])
         for index, action in enumerate(actions):
+            if action.get("status") == "completed":
+                continue
             await asyncio.sleep(0.45)
             actions[index] = {
                 **action,
@@ -134,12 +159,16 @@ async def run_visual_mission(mission_id: str) -> None:
         )
         await db.visual_missions.update_one(
             {"id": mission_id},
-            {"$set": {"status": "completed", "result": result, "steps": steps, "updated_at": _now()}},
+            {
+                "$set": {"status": "completed", "result": result, "steps": steps, "updated_at": _now()},
+                "$unset": {"runner_id": "", "lease_until": "", "last_run_error": ""},
+            },
         )
         await _post_room(
             "zero",
             "system",
             f"🖥️ Navegador Visual · MODO SIMULADO\n\n{result}",
+            message_id=f"visual-delivery-{mission_id}",
         )
     except Exception:
         logger.exception("visual mission %s failed", mission_id)
@@ -149,8 +178,10 @@ async def run_visual_mission(mission_id: str) -> None:
                 "$set": {
                     "status": "failed",
                     "result": "[MODO SIMULADO] A simulação foi interrompida antes da entrega.",
+                    "last_run_error": "visual_simulation_failed",
                     "updated_at": _now(),
-                }
+                },
+                "$unset": {"runner_id": "", "lease_until": ""},
             },
         )
 

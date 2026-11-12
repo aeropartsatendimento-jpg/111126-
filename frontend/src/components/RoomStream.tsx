@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import AgentAvatar from "@/components/AgentAvatar";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 const FILTERS = ["all", "zero", "pro", "jarvis", "aluna", "plus", "user", "system"];
 
@@ -151,7 +152,19 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
       </div>
 
       {full && (
-        <div className="grid grid-cols-1 items-end gap-2 border-t pt-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="space-y-2 border-t pt-3">
+          <ActionErrorNotice
+            visible={post.isError}
+            pending={post.isPending}
+            testId="room-message-send"
+            mayDuplicate
+            onDismiss={() => post.reset()}
+            onRetry={() => {
+              const content = post.variables ?? draft.trim();
+              if (content) post.mutate(content);
+            }}
+          />
+          <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <Textarea
             data-testid="room-message-input"
             value={draft}
@@ -176,6 +189,7 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
             <Send className="size-4" />
             {t("room.send")}
           </Button>
+          </div>
         </div>
       )}
     </div>

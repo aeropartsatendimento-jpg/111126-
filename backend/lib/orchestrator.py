@@ -13,7 +13,7 @@ completes and the room always tells the story.
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pymongo import ReturnDocument
 
 from lib.brain import llm_json, llm_text
@@ -246,81 +246,176 @@ async def _execute_task(task: dict, context: str, agent: dict | None) -> None:
 
     # An agent's answer is not a delivery: it waits for the Chefe's review.
     await db.tasks.update_one({"id": task["id"]}, {"$set": {"status": "review", "result": reply, "updated_at": _now()}})
-    await _post_room(task["agent_key"], "chat", f"Entrega para revisão: {title}\n\n{reply}", task["mission_id"])
+    await _post_room(
+        task["agent_key"],
+        "chat",
+        f"Entrega para revisão: {title}\n\n{reply}",
+        task["mission_id"],
+        message_id=f"task-delivery-{task['id']}",
+    )
+
+
+async def _claim_mission(mission_id: str) -> dict | None:
+    now = _now()
+    return await db.missions.find_one_and_update(
+        {
+            "id": mission_id,
+            "status": {"$in": ["planning", "delegating"]},
+            "$or": [
+                {"lease_until": {"$exists": False}},
+                {"lease_until": {"$lte": now}},
+            ],
+        },
+        {
+            "$set": {
+                "runner_id": _new_id(),
+                "lease_until": now + timedelta(minutes=10),
+                "updated_at": now,
+            },
+            "$inc": {"run_attempts": 1},
+        },
+        return_document=ReturnDocument.AFTER,
+    )
 
 
 async def run_mission(mission_id: str) -> None:
-    mission = await db.missions.find_one({"id": mission_id})
+    mission = await _claim_mission(mission_id)
     if not mission:
         return
-    text = mission["text"]
-    project = await db.projects.find_one({"id": mission.get("project_id")}) if mission.get("project_id") else None
-
-    await _post_room("system", "system", "Missão recebida pelo Zero. Analisando e montando o plano de delegação...", mission_id)
-
-    context = f"Missão do Chefe: {text}"
-    if project:
-        context = f"{await project_card(project)}\n\n{context}"
-    context += f"\n\nPainel da loja AeroPartz:\n{await store_context()}"
-
-    zero = await _agent("zero") or {}
-    plan = llm_json(
-        await llm_text(
-            PLAN_SYSTEM, context, session_id=f"plan-{mission_id}",
-            provider=zero.get("provider", "openai"), model=zero.get("model", "gpt-5.4"),
+    try:
+        text = mission["text"]
+        project = await db.projects.find_one({"id": mission.get("project_id")}) if mission.get("project_id") else None
+        await _post_room(
+            "system",
+            "system",
+            "Missão recebida pelo Zero. Analisando e montando o plano de delegação...",
+            mission_id,
+            message_id=f"mission-received-{mission_id}",
         )
-    )
-    simulated_plan = plan is None or not isinstance(plan.get("tasks"), list) or not plan["tasks"]
-    if simulated_plan:
-        plan = _sim_plan(text)
 
-    intro = str(plan.get("intro") or "").strip() or "Plano montado. Delegando ao esquadrão."
-    task_docs: list[dict] = []
-    for t in [t for t in plan.get("tasks", []) if isinstance(t, dict)][:4] or [{"agent_key": "pro", "title": "Supervisionar execução", "detail": text[:300]}]:
-        key = t.get("agent_key") if t.get("agent_key") in DELEGATABLE else "pro"
-        task_docs.append({
-            "id": _new_id(), "mission_id": mission_id, "mission_text": text, "agent_key": key,
-            "title": (str(t.get("title") or "Tarefa").strip()[:140] or "Tarefa"),
-            "detail": str(t.get("detail") or "").strip()[:800],
-            "status": "queued", "result": None, "project_id": mission.get("project_id"), "review_note": None,
-            "created_at": _now(), "updated_at": _now(),
-        })
-    await db.tasks.insert_many([dict(d) for d in task_docs])
+        context = f"Missão do Chefe: {text}"
+        if project:
+            context = f"{await project_card(project)}\n\n{context}"
+        context += f"\n\nPainel da loja AeroPartz:\n{await store_context()}"
 
-    names = {"aluna": "Luna"}
-    lines = [intro, ""] + [f"→ {names.get(t['agent_key'], t['agent_key'].capitalize())}: {t['title']}" for t in task_docs]
-    if project:
-        lines.insert(0, f"📁 {project['name']}")
-    if simulated_plan:
-        lines += ["", "(plano simulado — IA em nuvem indisponível agora)"]
-    await _post_room("zero", "delegation", "\n".join(lines), mission_id)
-    await db.missions.update_one({"id": mission_id}, {"$set": {"status": "delegating", "plan_intro": intro}})
-    await asyncio.sleep(1.5)
+        task_docs = await db.tasks.find({"mission_id": mission_id}).sort("created_at", 1).to_list(20)
+        if not task_docs:
+            zero = await _agent("zero") or {}
+            plan = llm_json(
+                await llm_text(
+                    PLAN_SYSTEM,
+                    context,
+                    session_id=f"plan-{mission_id}",
+                    provider=zero.get("provider", "openai"),
+                    model=zero.get("model", "gpt-5.4"),
+                )
+            )
+            simulated_plan = plan is None or not isinstance(plan.get("tasks"), list) or not plan["tasks"]
+            if simulated_plan:
+                plan = _sim_plan(text)
 
-    failed = 0
-    for doc in task_docs:
-        try:
-            await _execute_task(doc, context, await _agent(doc["agent_key"]))
-        except Exception as exc:
-            logger.exception("task %s failed", doc["id"])
-            failed += 1
-            await db.tasks.update_one({"id": doc["id"]}, {"$set": {"status": "failed", "result": f"Erro na execução: {exc}", "updated_at": _now()}})
+            intro = str(plan.get("intro") or "").strip() or "Plano montado. Delegando ao esquadrão."
+            decision = str(plan.get("decision_needed") or "").strip()
+            next_step = str(plan.get("next_step") or "").strip()
+            await db.missions.update_one(
+                {"id": mission_id},
+                {
+                    "$set": {
+                        "plan_intro": intro,
+                        "decision_needed": decision,
+                        "next_step": next_step,
+                        "plan_simulated": simulated_plan,
+                        "updated_at": _now(),
+                    }
+                },
+            )
+            for item in [item for item in plan.get("tasks", []) if isinstance(item, dict)][:4] or [{"agent_key": "pro", "title": "Supervisionar execução", "detail": text[:300]}]:
+                key = item.get("agent_key") if item.get("agent_key") in DELEGATABLE else "pro"
+                task_docs.append({
+                    "id": _new_id(), "mission_id": mission_id, "mission_text": text, "agent_key": key,
+                    "title": (str(item.get("title") or "Tarefa").strip()[:140] or "Tarefa"),
+                    "detail": str(item.get("detail") or "").strip()[:800],
+                    "status": "queued", "result": None, "project_id": mission.get("project_id"), "review_note": None,
+                    "created_at": _now(), "updated_at": _now(),
+                })
+            await db.tasks.insert_many([dict(doc) for doc in task_docs])
+            mission.update(
+                plan_intro=intro,
+                decision_needed=decision,
+                next_step=next_step,
+                plan_simulated=simulated_plan,
+            )
 
-    decision = str(plan.get("decision_needed") or "").strip()
-    if project:
-        update = {"in_progress": f"{text[:200]} — {len(task_docs) - failed} entrega(s) aguardando revisão", "updated_at": _now()}
-        if plan.get("next_step"):
-            update["next_step"] = str(plan["next_step"])[:500]
+        intro = mission.get("plan_intro") or "Plano montado. Delegando ao esquadrão."
+        names = {"aluna": "Luna"}
+        lines = [intro, ""] + [f"→ {names.get(doc['agent_key'], doc['agent_key'].capitalize())}: {doc['title']}" for doc in task_docs]
+        if project:
+            lines.insert(0, f"📁 {project['name']}")
+        if mission.get("plan_simulated"):
+            lines += ["", "(plano simulado — IA em nuvem indisponível agora)"]
+        await _post_room("zero", "delegation", "\n".join(lines), mission_id, message_id=f"mission-delegation-{mission_id}")
+        await db.missions.update_one(
+            {"id": mission_id},
+            {"$set": {"status": "delegating", "lease_until": _now() + timedelta(minutes=10), "updated_at": _now()}},
+        )
+
+        if any(doc.get("status") in {"queued", "working"} for doc in task_docs):
+            await asyncio.sleep(1.5)
+        for doc in task_docs:
+            if doc.get("status") not in {"queued", "working"}:
+                continue
+            try:
+                await _execute_task(doc, context, await _agent(doc["agent_key"]))
+            except Exception as exc:
+                logger.exception("task %s failed", doc["id"])
+                await db.tasks.update_one(
+                    {"id": doc["id"]},
+                    {"$set": {"status": "failed", "result": f"Erro na execução: {exc}", "updated_at": _now()}},
+                )
+
+        final_tasks = await db.tasks.find({"mission_id": mission_id}).sort("created_at", 1).to_list(20)
+        for doc in final_tasks:
+            if doc.get("status") in {"review", "verified", "rejected"} and doc.get("result"):
+                await _post_room(
+                    doc["agent_key"],
+                    "chat",
+                    f"Entrega para revisão: {doc['title']}\n\n{doc['result']}",
+                    mission_id,
+                    message_id=f"task-delivery-{doc['id']}",
+                )
+        failed = sum(doc.get("status") == "failed" for doc in final_tasks)
+        awaiting_review = sum(doc.get("status") == "review" for doc in final_tasks)
+        decision = str(mission.get("decision_needed") or "").strip()
+        if project:
+            update = {"in_progress": f"{text[:200]} — {awaiting_review} entrega(s) aguardando revisão", "updated_at": _now()}
+            if mission.get("next_step"):
+                update["next_step"] = str(mission["next_step"])[:500]
+            if decision:
+                update["blocker"] = decision[:500]
+            await db.projects.update_one({"id": project["id"]}, {"$set": update})
+
+        summary = f"Resumo do Zero: {awaiting_review} entrega(s) aguardando sua revisão em Tarefas"
+        summary += f", {failed} falha(s)." if failed else "."
         if decision:
-            update["blocker"] = decision[:500]
-        await db.projects.update_one({"id": project["id"]}, {"$set": update})
-
-    summary = f"Resumo do Zero: {len(task_docs) - failed} entrega(s) aguardando sua revisão em Tarefas"
-    summary += f", {failed} falha(s)." if failed else "."
-    if decision:
-        summary += f"\n\n⚠️ Precisa da sua decisão: {decision}"
-    await _post_room("system", "summary", summary, mission_id)
-    await db.missions.update_one({"id": mission_id}, {"$set": {"status": "failed" if failed == len(task_docs) else "completed"}})
+            summary += f"\n\n⚠️ Precisa da sua decisão: {decision}"
+        await _post_room("system", "summary", summary, mission_id, message_id=f"mission-summary-{mission_id}")
+        final_status = "failed" if final_tasks and failed == len(final_tasks) else "completed"
+        await db.missions.update_one(
+            {"id": mission_id},
+            {
+                "$set": {"status": final_status, "updated_at": _now()},
+                "$unset": {"runner_id": "", "lease_until": "", "last_run_error": ""},
+            },
+        )
+    except Exception as exc:
+        logger.exception("mission %s interrupted", mission_id)
+        await db.missions.update_one(
+            {"id": mission_id},
+            {
+                "$set": {"last_run_error": type(exc).__name__, "updated_at": _now()},
+                "$unset": {"runner_id": "", "lease_until": ""},
+            },
+        )
 
 
 async def complete_review_effects(task: dict) -> dict:

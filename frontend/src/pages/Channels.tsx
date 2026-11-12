@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import StatusBadge from "@/components/StatusBadge";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 function ChannelIcon({ channelKey }: { channelKey: string }) {
   switch (channelKey) {
@@ -37,7 +38,6 @@ function SearchPanel() {
   const search = useMutation({
     mutationFn: (q: string) => apiPost<SearchResponse>("/channels/internet/search", { query: q }),
     onSuccess: (data) => setResults(data),
-    onError: () => setResults(null),
   });
 
   const runSearch = () => {
@@ -65,11 +65,16 @@ function SearchPanel() {
           {search.isPending ? t("search.searching") : t("search.btn")}
         </Button>
       </div>
-      {search.isError && (
-        <p className="text-sm text-red-600" data-testid="search-error">
-          {t("search.error")}
-        </p>
-      )}
+      <ActionErrorNotice
+        visible={search.isError}
+        pending={search.isPending}
+        testId="channel-search"
+        onDismiss={() => search.reset()}
+        onRetry={() => {
+          const lastQuery = search.variables ?? query.trim();
+          if (lastQuery) search.mutate(lastQuery);
+        }}
+      />
       {results && results.results.length === 0 && !search.isPending && (
         <p className="text-sm text-muted-foreground" data-testid="search-empty">
           {t("search.empty")}
@@ -116,6 +121,13 @@ function ChannelCard({ channel }: { channel: Channel }) {
   return (
     <Card data-testid={`channel-card-${channel.key}`}>
       <CardContent className="space-y-3 p-4">
+        <ActionErrorNotice
+          visible={patch.isError}
+          pending={patch.isPending}
+          testId={`channel-${channel.key}-save`}
+          onDismiss={() => patch.reset()}
+          onRetry={() => patch.variables && patch.mutate(patch.variables)}
+        />
         <div className="flex items-start gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100">
             <ChannelIcon channelKey={channel.key} />

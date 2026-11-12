@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 export const MEM_KINDS = ["decisao_chefe", "fato_verificado", "proposta", "antiga"] as const;
 export const MEM_STYLE: Record<string, string> = {
@@ -86,6 +87,14 @@ export default function MemoryPage() {
             <Plus className="size-4" />
             {replaces ? t("memory.saveReplace") : t("memory.save")}
           </Button>
+          <ActionErrorNotice
+            visible={save.isError}
+            pending={save.isPending}
+            testId="memory-save"
+            mayDuplicate
+            onDismiss={() => save.reset()}
+            onRetry={() => save.mutate()}
+          />
         </CardContent>
       </Card>
 

@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import StatusBadge from "@/components/StatusBadge";
 import TaskCard from "@/components/TaskCard";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 const FIELDS = ["objective", "in_progress", "blocker", "next_step"] as const;
 type Field = (typeof FIELDS)[number];
@@ -86,6 +87,23 @@ function ResumeCard({ project }: { project: Project }) {
           </div>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <ActionErrorNotice
+              visible={resume.isError}
+              pending={resume.isPending}
+              testId={`project-${project.id}-resume`}
+              mayDuplicate
+              onDismiss={() => resume.reset()}
+              onRetry={() => resume.mutate()}
+            />
+            <ActionErrorNotice
+              visible={save.isError}
+              pending={save.isPending}
+              testId={`project-${project.id}-save`}
+              onDismiss={() => save.reset()}
+              onRetry={() => save.variables && save.mutate(save.variables)}
+            />
+          </div>
           <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 sm:col-span-2" data-testid="project-last-verified">
             <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">{t("projects.lastVerified")}</p>
             <p className="mt-1 text-sm">{project.last_verified.replace(/\*\*/g, "") || t("projects.none")}</p>
@@ -174,6 +192,28 @@ function AccountsCard() {
       </CardHeader>
       <CardContent className="space-y-2">
         <DataRegionState query={accountsQuery} testId="accounts-data" />
+        <ActionErrorNotice
+          visible={add.isError}
+          pending={add.isPending}
+          testId="account-add"
+          mayDuplicate
+          onDismiss={() => add.reset()}
+          onRetry={() => add.mutate()}
+        />
+        <ActionErrorNotice
+          visible={setStatus.isError}
+          pending={setStatus.isPending}
+          testId="account-status-save"
+          onDismiss={() => setStatus.reset()}
+          onRetry={() => setStatus.variables && setStatus.mutate(setStatus.variables)}
+        />
+        <ActionErrorNotice
+          visible={remove.isError}
+          pending={remove.isPending}
+          testId="account-remove"
+          onDismiss={() => remove.reset()}
+          onRetry={() => remove.variables && remove.mutate(remove.variables)}
+        />
         {accounts !== undefined && accounts.length === 0 && (
           <p className="text-sm text-muted-foreground" data-testid="accounts-empty">{t("data.empty")}</p>
         )}
@@ -257,6 +297,14 @@ export default function Projects() {
           <Card>
             <CardContent className="space-y-2 p-3">
               <DataRegionState query={projectsQuery} testId="projects-data" />
+              <ActionErrorNotice
+                visible={create.isError}
+                pending={create.isPending}
+                testId="project-create"
+                mayDuplicate
+                onDismiss={() => create.reset()}
+                onRetry={() => create.mutate()}
+              />
               {projects !== undefined && list.length === 0 && <p className="p-2 text-sm text-muted-foreground" data-testid="projects-empty">{t("projects.empty")}</p>}
               {list.map((p) => (
                 <button

@@ -85,6 +85,32 @@ de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas princip
 - Estado: código aplicado, **não validado nesta rodada por decisão do Chefe de agrupar os testes mais adiante**.
 - Próximo passo exato: continuar o desenvolvimento desejado e, na rodada combinada, validar P1.4 em mobile/teclado antes de marcar concluído.
 
+## Registro de continuidade — 12/11/2026 · P1.5 em validação
+
+- Implementado: `ActionErrorNotice.tsx`, aviso persistente e bilíngue com repetir/fechar e alerta de duplicidade.
+- Cobertura: missão, briefing, Sala, Linha Direta, execução de proposta, Navegador Visual, projetos, contas,
+  revisão de tarefas, Loja, canais, busca e Memória.
+- Preservação: campos só são limpos no sucesso; falha de busca mantém resultados anteriores visíveis.
+- Estado: código aplicado, **não validado nesta rodada para manter a bateria agrupada solicitada pelo Chefe**.
+- Próximo passo exato: implementar diagnóstico operacional simples (saúde e última atualização) ou iniciar a bateria agrupada quando o Chefe pedir.
+
+## Registro de continuidade — 12/11/2026 · P1.6 em validação
+
+- Implementado: card “Saúde do QG” no Cockpit para seis áreas essenciais.
+- Estados: disponível, verificando, dados antigos, indisponível e não verificado, com última atualização bem-sucedida.
+- Histórico: até oito transições recentes guardadas no navegador; quatro exibidas sem detalhes técnicos.
+- Estado: código aplicado e **ainda não validado**, incluído na bateria agrupada solicitada pelo Chefe.
+- Próximo passo exato: tornar missões/tarefas em andamento recuperáveis após reinício do backend.
+
+## Registro de continuidade — 12/11/2026 · P1.7 em validação
+
+- Implementado: leases de execução e recuperação no startup para missões normais e visuais interrompidas.
+- Idempotência: mensagens de recebimento, delegação, entrega, resumo e entrega visual têm IDs determinísticos.
+- Retomada: ignora tarefas/etapas concluídas, retoma `queued|working`, completa revisão pendente e proposta reservada.
+- Arquivos: `backend/lib/recovery.py`, `backend/lib/orchestrator.py`, `backend/routers/visual.py`, `backend/server.py`, índices.
+- Estado: código aplicado, **ainda não validado em reinício controlado** por decisão de agrupar testes.
+- Próximo passo exato: executar a bateria agrupada P1.4–P1.7 antes de qualquer integração real ou publicação.
+
 ## Referências
 
 - Especificação viva: `memory/SPEC.md`

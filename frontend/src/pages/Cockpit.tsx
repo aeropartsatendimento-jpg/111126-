@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Send, Volume2 } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, CheckCircle2, CloudOff, LoaderCircle, Send, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { WORKER_ORDER } from "@/lib/agents";
 import { useI18n } from "@/lib/i18n";
+import { formatWhen } from "@/lib/format";
 import { speak } from "@/lib/speech";
 import type { Agent, Briefing, BriefingSettings, Channel, Mission, Project, StoreItem, Task } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,126 @@ import AgentAvatar from "@/components/AgentAvatar";
 import StatusBadge from "@/components/StatusBadge";
 import RoomStream from "@/components/RoomStream";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 const CHIPS = ["chip.weather", "chip.store", "chip.emails", "chip.cameras"];
+
+const HEALTH_AREAS = [
+  { id: "agents", queryKey: ["agents"], label: "health.agents" },
+  { id: "projects", queryKey: ["projects"], label: "health.projects" },
+  { id: "tasks", queryKey: ["tasks"], label: "health.tasks" },
+  { id: "room", queryKey: ["room"], label: "health.room" },
+  { id: "store", queryKey: ["store"], label: "health.store" },
+  { id: "channels", queryKey: ["channels"], label: "health.channels" },
+] as const;
+
+type HealthStatus = "online" | "loading" | "stale" | "offline" | "unchecked";
+type HealthEvent = { id: string; areaId: string; kind: "outage" | "recovered"; at: string };
+const HEALTH_EVENTS_KEY = "qgzero.healthEvents";
+
+function healthStatus(state: ReturnType<ReturnType<typeof useQueryClient>["getQueryState"]>): HealthStatus {
+  if (!state) return "unchecked";
+  if (state.status === "pending") return "loading";
+  if (state.status === "error") return state.data !== undefined ? "stale" : "offline";
+  return "online";
+}
+
+function HealthStatusIcon({ status }: { status: HealthStatus }) {
+  if (status === "online") return <CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />;
+  if (status === "stale") return <AlertTriangle className="size-4 text-amber-600" aria-hidden="true" />;
+  if (status === "offline") return <CloudOff className="size-4 text-red-600" aria-hidden="true" />;
+  return <LoaderCircle className={`size-4 text-slate-400 ${status === "loading" ? "animate-spin" : ""}`} aria-hidden="true" />;
+}
+
+function OperationalHealthCard() {
+  const { t, lang } = useI18n();
+  const queryClient = useQueryClient();
+  const [, setRevision] = useState(0);
+  const previous = useRef<Record<string, HealthStatus>>({});
+  const [events, setEvents] = useState<HealthEvent[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(HEALTH_EVENTS_KEY) ?? "[]") as HealthEvent[];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(
+    () => queryClient.getQueryCache().subscribe(() => setRevision((value) => value + 1)),
+    [queryClient],
+  );
+
+  const rows = HEALTH_AREAS.map((area) => {
+    const state = queryClient.getQueryState(area.queryKey);
+    return { ...area, status: healthStatus(state), updatedAt: state?.dataUpdatedAt ?? 0 };
+  });
+  const statusSignature = rows.map((row) => `${row.id}:${row.status}`).join("|");
+
+  useEffect(() => {
+    const nextEvents: HealthEvent[] = [];
+    for (const row of rows) {
+      const before = previous.current[row.id];
+      previous.current[row.id] = row.status;
+      if (!before || before === row.status) continue;
+      if (row.status === "offline" || row.status === "stale") {
+        nextEvents.push({ id: `${Date.now()}-${row.id}-outage`, areaId: row.id, kind: "outage", at: new Date().toISOString() });
+      } else if (row.status === "online" && (before === "offline" || before === "stale")) {
+        nextEvents.push({ id: `${Date.now()}-${row.id}-recovered`, areaId: row.id, kind: "recovered", at: new Date().toISOString() });
+      }
+    }
+    if (nextEvents.length) {
+      setEvents((current) => {
+        const updated = [...nextEvents.reverse(), ...current].slice(0, 8);
+        localStorage.setItem(HEALTH_EVENTS_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [statusSignature]);
+
+  const areaLabel = (areaId: string) => t(HEALTH_AREAS.find((area) => area.id === areaId)?.label ?? areaId);
+
+  return (
+    <Card data-testid="operational-health-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 font-heading text-base" data-testid="operational-health-title">
+          <Activity className="size-4 text-blue-600" aria-hidden="true" />
+          {t("health.title")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" data-testid="operational-health-areas">
+          {rows.map((row) => (
+            <div key={row.id} className="flex items-center gap-2 rounded-lg border bg-white p-2.5" data-testid={`health-area-${row.id}`}>
+              <HealthStatusIcon status={row.status} />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold" data-testid={`health-area-${row.id}-label`}>{t(row.label)}</p>
+                <p className="text-[10px] text-muted-foreground" data-testid={`health-area-${row.id}-updated`}>
+                  {row.updatedAt ? `${t("health.updated")} ${formatWhen(new Date(row.updatedAt).toISOString(), lang)}` : t("health.notChecked")}
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold" data-testid={`health-area-${row.id}-status`}>{t(`health.status.${row.status}`)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="border-t pt-3" data-testid="health-event-history">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500" data-testid="health-history-title">{t("health.history")}</p>
+          {events.length === 0 ? (
+            <p className="text-xs text-muted-foreground" data-testid="health-history-empty">{t("health.historyEmpty")}</p>
+          ) : (
+            <div className="space-y-1.5">
+              {events.slice(0, 4).map((event) => (
+                <p key={event.id} className="flex items-center justify-between gap-2 text-xs" data-testid={`health-event-${event.id}`}>
+                  <span>{areaLabel(event.areaId)} · {t(`health.event.${event.kind}`)}</span>
+                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{formatWhen(event.at, lang)}</span>
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function AgentNode({ agentKey, agent }: { agentKey: string; agent?: Agent }) {
   const { t, lang } = useI18n();
@@ -177,6 +296,17 @@ function MissionPanel() {
           <Send className="size-4" />
           {dispatch.isPending ? t("mission.sending") : t("mission.send")}
         </Button>
+        <ActionErrorNotice
+          visible={dispatch.isError}
+          pending={dispatch.isPending}
+          testId="mission-dispatch"
+          mayDuplicate
+          onDismiss={() => dispatch.reset()}
+          onRetry={() => {
+            const text = dispatch.variables ?? draft.trim();
+            if (text) dispatch.mutate(text);
+          }}
+        />
       </CardContent>
     </Card>
   );
@@ -243,6 +373,21 @@ function BriefingCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <ActionErrorNotice
+          visible={run.isError}
+          pending={run.isPending}
+          testId="briefing-run"
+          mayDuplicate
+          onDismiss={() => run.reset()}
+          onRetry={() => run.mutate()}
+        />
+        <ActionErrorNotice
+          visible={save.isError}
+          pending={save.isPending}
+          testId="briefing-settings-save"
+          onDismiss={() => save.reset()}
+          onRetry={() => save.variables && save.mutate(save.variables)}
+        />
         <DataRegionState query={briefingsQuery} testId="cockpit-briefings-data" />
         <DataRegionState query={settingsQuery} testId="cockpit-briefing-settings-data" />
         {settings && (
@@ -468,6 +613,7 @@ export default function Cockpit() {
         </div>
         <div className="space-y-4 sm:space-y-5 lg:col-span-4">
           <BriefingCard />
+          <OperationalHealthCard />
           <StoreCard />
           <TasksPreview />
           <ChannelsPreview />

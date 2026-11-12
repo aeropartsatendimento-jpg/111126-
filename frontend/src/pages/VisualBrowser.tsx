@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 function validUrl(value: string): boolean {
   try {
@@ -167,6 +168,14 @@ export default function VisualBrowser() {
                 <Play className="size-4" />
                 {create.isPending ? t("visual.starting") : t("visual.run")}
               </Button>
+              <ActionErrorNotice
+                visible={create.isError}
+                pending={create.isPending}
+                testId="visual-mission-create"
+                mayDuplicate
+                onDismiss={() => create.reset()}
+                onRetry={() => create.mutate()}
+              />
             </CardContent>
           </Card>
 

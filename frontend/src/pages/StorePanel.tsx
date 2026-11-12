@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 export const STORE_KINDS = [
   { kind: "stock", label: "store.stock", hot: "critical", cold: "ok" },
@@ -61,6 +62,28 @@ function KindColumn({ kind, label, hot, cold, items, dataReady }: { kind: string
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
+        <ActionErrorNotice
+          visible={add.isError}
+          pending={add.isPending}
+          testId={`store-${kind}-add`}
+          mayDuplicate
+          onDismiss={() => add.reset()}
+          onRetry={() => add.mutate()}
+        />
+        <ActionErrorNotice
+          visible={toggle.isError}
+          pending={toggle.isPending}
+          testId={`store-${kind}-status-save`}
+          onDismiss={() => toggle.reset()}
+          onRetry={() => toggle.variables && toggle.mutate(toggle.variables)}
+        />
+        <ActionErrorNotice
+          visible={remove.isError}
+          pending={remove.isPending}
+          testId={`store-${kind}-remove`}
+          onDismiss={() => remove.reset()}
+          onRetry={() => remove.variables && remove.mutate(remove.variables)}
+        />
         {dataReady && sorted.length === 0 && <p className="text-sm text-muted-foreground" data-testid={`store-${kind}-empty`}>{t("store.empty")}</p>}
         {sorted.map((it) => (
           <div key={it.id} data-testid={`store-item-${it.id}`} className="flex flex-wrap items-center gap-2 rounded-lg border bg-white p-2.5 sm:flex-nowrap">

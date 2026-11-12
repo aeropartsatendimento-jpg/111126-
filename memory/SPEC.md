@@ -21,7 +21,8 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 ## Fluxos
 1. **Missão**: `POST /api/missions` → `run_mission` (background): Zero planeja (JSON estrito, ≤4 tasks)
    → mensagem `delegation` na sala → cada task `queued→working→review` com resultado do LLM do agente
-   (mensagem `chat`) → `system/summary` fecha. Fallback simulado marcado "(modo simulado)".
+   (mensagem `chat`) → `system/summary` fecha. Fallback simulado marcado "(modo simulado)". Missões em
+   `planning/delegating` usam lease persistida e são retomadas no startup; tarefas já entregues não são reexecutadas.
 2. **Rotina da Manhã**: briefing diário com clima de **busca real** + checklist AeroPartz (caixa,
    estoque crítico, pedidos, cupons), prioridades e lembretes. Cron gerenciado a cada 30 minutos chama
    webhook interno autenticado; `lib/scheduler.py` decide pelo horário configurado em America/Sao_Paulo
@@ -45,6 +46,9 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
   `PATCH /tasks/{id}/review {approve, note}` → `verified`/`rejected` (409 se não está em review). Aprovar grava
   `last_verified` no projeto. A transição é atômica e usa IDs determinísticos para não duplicar memória/mensagem
   sob concorrência. Status: queued|working|review|verified|rejected|failed.
+- **Recuperação de jobs**: no startup, o backend limpa leases do processo anterior e retoma missões normais
+  `planning|delegating`, missões visuais `queued|running`, efeitos de revisão `pending` e propostas com missão reservada.
+  Mensagens de recebimento, delegação, entrega e resumo usam IDs determinísticos para não duplicar após reinício.
 - **Contas salvas**: `GET/POST /accounts`, `PATCH/DELETE /accounts/{id}` — status available|busy|offline|unverified
   (seed: 5 contas, todas "unverified" — disponibilidade nunca verificada).
 - **Intenção do Zero** (linha direta): cada resposta é explicando|propondo|executando (JSON do LLM). executando →
@@ -95,6 +99,14 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
   a página; formulários de Loja, Projetos, Contas e Canais empilham em telas estreitas. Alvos principais têm 44px.
 - Teclado: foco visível global, ordem de Tab preservada nos formulários (incluindo item → quantidade → adicionar na Loja),
   rótulos acessíveis nos campos ajustados e animações respeitam `prefers-reduced-motion`.
+- Falhas de criação, edição, aprovação e envio exibem aviso persistente junto à ação, preservam o conteúdo digitado
+  e oferecem repetir/fechar. Operações que podem ter sido recebidas antes da falha alertam sobre possível duplicidade.
+- A recuperação cobre missão, briefing, Sala, Linha Direta, proposta do Zero, missão visual, projetos, contas,
+  revisão de tarefas, Loja, canais, busca e Memória. Resultados de busca anteriores não são apagados por falha nova.
+- O Cockpit inclui “Saúde do QG” para Esquadrão, Projetos, Tarefas, Sala, Loja e Canais, derivada do cache real
+  das consultas: disponível, verificando, dados antigos, indisponível ou não verificado, com última atualização.
+- O navegador guarda até oito transições recentes de indisponibilidade/recuperação e mostra as quatro mais novas,
+  sem detalhes técnicos, payloads ou credenciais.
 
 ## Autenticação
 Nenhuma (app pessoal aberto, sem tela de login nem bloqueio de API). `EMERGENT_LLM_KEY` gerencia o cérebro em nuvem (backend/.env);
@@ -106,6 +118,9 @@ sem chave/serviço fora → modo simulado automático.
 - Briefing manual usa a data de `America/Sao_Paulo`, igual à rotina automática.
 - Uma consulta indisponível não transforma a rota em página vazia nem apresenta cache antigo como informação atual.
 - Ajustes mobile/acessibilidade de P1.4 estão implementados, com validação final conscientemente adiada pelo Chefe.
+- Recuperação persistente de ações está implementada, também aguardando a bateria agrupada de validação.
+- Diagnóstico operacional do Cockpit está implementado e aguarda a mesma validação agrupada.
+- Recuperação de missões/jobs após reinício está implementada e aguarda teste controlado de interrupção/retomada.
 
 ## Para re-semeadar
 `cd /app/backend && python seed.py` (upsert por key; não derruba coleções).

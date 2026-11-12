@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import AgentAvatar from "@/components/AgentAvatar";
 import StatusBadge from "@/components/StatusBadge";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 // One delivery: who did it, the result, and — while it awaits review — the Chefe's verdict.
 export default function TaskCard({ task, compact = false }: { task: Task; compact?: boolean }) {
@@ -59,7 +60,15 @@ export default function TaskCard({ task, compact = false }: { task: Task; compac
         )}
         {task.review_note && <p className="text-xs italic text-slate-500">“{task.review_note}”</p>}
         {task.status === "review" && (
-          <div className="flex flex-wrap items-center gap-2 border-t pt-2.5">
+          <div className="space-y-2 border-t pt-2.5">
+            <ActionErrorNotice
+              visible={review.isError}
+              pending={review.isPending}
+              testId={`task-${task.id}-review`}
+              onDismiss={() => review.reset()}
+              onRetry={() => typeof review.variables === "boolean" && review.mutate(review.variables)}
+            />
+            <div className="flex flex-wrap items-center gap-2">
             <Input
               data-testid={`task-review-note-${task.id}`}
               value={note}
@@ -75,6 +84,7 @@ export default function TaskCard({ task, compact = false }: { task: Task; compac
               <Undo2 className="size-4" />
               {t("review.reject")}
             </Button>
+            </div>
           </div>
         )}
       </CardContent>

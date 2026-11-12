@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AgentAvatar from "@/components/AgentAvatar";
 import DataRegionState from "@/components/DataRegionState";
+import ActionErrorNotice from "@/components/ActionErrorNotice";
 
 // Minimal typings for the Web Speech API (not in the DOM lib).
 type SRResultItem = { 0: { transcript: string }; isFinal: boolean };
@@ -325,6 +326,26 @@ export default function ZeroDirect() {
           <Send className="size-4" />
           {t("zero.send")}
         </Button>
+      </div>
+      <div className="space-y-2 pt-2">
+        <ActionErrorNotice
+          visible={send.isError}
+          pending={send.isPending}
+          testId="zero-message-send"
+          mayDuplicate
+          onDismiss={() => send.reset()}
+          onRetry={() => {
+            const content = send.variables ?? draft.trim();
+            if (content) send.mutate(content);
+          }}
+        />
+        <ActionErrorNotice
+          visible={execute.isError}
+          pending={execute.isPending}
+          testId="zero-proposal-execute"
+          onDismiss={() => execute.reset()}
+          onRetry={() => execute.variables && execute.mutate(execute.variables)}
+        />
       </div>
     </div>
   );

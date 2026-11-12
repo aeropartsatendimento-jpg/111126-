@@ -186,6 +186,42 @@ Evidência: `test_reports/iteration_8.json` — 8/8 critérios de interface apro
 Implementado sem validação final nesta rodada: foco global, alvos móveis, formulários responsivos, filtros roláveis,
 navegação inferior com snap e canvas do Universo navegável horizontalmente. Não marcar `[x]` antes da bateria combinada.
 
+### P1.5 — Recuperação de ações
+
+- [~] Padronizar aviso persistente para falhas de criação, edição, aprovação e envio.
+- [~] Preservar entradas digitadas e resultados consultáveis quando uma ação falhar.
+- [~] Oferecer “Tentar novamente” e “Fechar aviso” junto à ação afetada.
+- [~] Alertar quando repetir uma criação/envio puder gerar duplicidade.
+- [~] Cobrir missão, briefing, Sala, Zero, Navegador, projetos, tarefas, contas, Loja, canais, busca e Memória.
+- [ ] Validar falha, preservação, repetição, sucesso e remoção automática dos avisos.
+- [ ] Critério de aceite: falha de mutação não apaga entrada nem conteúdo e sua recuperação é inequívoca.
+
+Implementado em `ActionErrorNotice.tsx` e nos fluxos principais; validação agrupada adiada por decisão do Chefe.
+
+### P1.6 — Diagnóstico operacional
+
+- [~] Exibir resumo simples da saúde de Esquadrão, Projetos, Tarefas, Sala, Loja e Canais.
+- [~] Mostrar estado disponível, verificando, dados antigos, indisponível ou não verificado.
+- [~] Mostrar horário da última atualização bem-sucedida por área.
+- [~] Guardar histórico curto de indisponibilidade e recuperação sem detalhes técnicos.
+- [ ] Validar transições, persistência curta, PT/EN e ausência de dados sensíveis.
+- [ ] Critério de aceite: o Chefe identifica rapidamente a área afetada e quando ela atualizou pela última vez.
+
+Implementado no Cockpit a partir do cache do TanStack Query, sem nova API; validação agrupada adiada.
+
+### P1.7 — Recuperação de missões e jobs
+
+- [~] Aplicar lease persistida para impedir dois executores da mesma missão.
+- [~] Retomar missões `planning|delegating` e executar somente tarefas `queued|working`.
+- [~] Usar mensagens determinísticas para recebimento, delegação, entrega e resumo.
+- [~] Retomar missões visuais `queued|running` sem repetir etapas concluídas.
+- [~] Completar efeitos de revisão pendentes e reservas de proposta após reinício.
+- [ ] Testar interrupção antes/depois da criação de tarefas, durante tarefa e antes do resumo.
+- [ ] Testar retomada visual, efeitos de revisão e proposta reservada sem duplicações.
+- [ ] Critério de aceite: reinício não perde trabalho nem duplica tarefa, entrega, memória ou missão.
+
+Implementado em `lib/recovery.py`, `lib/orchestrator.py`, `routers/visual.py` e startup; validação agrupada adiada.
+
 ## 6. P2 — integrações reais bloqueadas por decisão ou acesso
 
 ### P2.1 — Cérebro em nuvem
