@@ -106,7 +106,7 @@ function KindColumn({ kind, label, hot, cold, items, dataReady }: { kind: string
             >
               {t(`store.${it.status}`)}
             </button>
-            <Button size="icon-sm" variant="ghost" className="size-11 sm:size-8" data-testid={`store-delete-${it.id}`} onClick={() => remove.mutate(it.id)} aria-label="remove">
+            <Button size="icon-sm" variant="ghost" className="size-11 sm:size-8" data-testid={`store-delete-${it.id}`} onClick={() => remove.mutate(it.id)} aria-label={`${t("common.remove")}: ${it.title}`}>
               <Trash2 className="size-4" />
             </Button>
           </div>

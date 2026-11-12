@@ -4,6 +4,7 @@
 
 O núcleo do QG está funcional e validado em modo simulado. A rodada mais recente concluiu estados localizados
 de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas principais, com recuperação sem recarregar.
+Depois dessa validação, P1.4–P1.7 receberam novas implementações que ainda aguardam a bateria agrupada combinada.
 
 ## Pronto e testado
 
@@ -27,6 +28,14 @@ de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas princip
 - Entregas repetidas do cron e retomadas após falha não duplicam briefing nem mensagem na Sala.
 - Cockpit, Sala, Projetos, Tarefas, Linha Direta, Navegador, Loja, Canais, Universo e Memória preservam o shell em falhas.
 - Cada consulta indisponível oferece nova tentativa; cache anterior permanece visível e explicitamente marcado como antigo.
+
+## Implementado e aguardando validação
+
+- P1.4: mobile, teclado, foco, skip-link, alvos de toque e movimento reduzido.
+- P1.5: recuperação persistente de ações com preservação de entrada e alerta de duplicidade.
+- P1.6: Saúde do QG, última atualização, histórico local, atualizar tudo e limpar histórico.
+- P1.7: retomada após reinício de missões, tarefas, revisões, propostas, conversas e missões visuais.
+- Estes itens **não pertencem ainda à lista “Pronto e testado”** e não devem ser tratados como concluídos antes do ensaio agrupado.
 
 ## Garantias do Navegador Visual atual
 
@@ -58,9 +67,9 @@ de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas princip
 
 ## Próximos passos de maior valor
 
-1. Tornar missões/jobs recuperáveis após reinício do backend.
-2. Validar mobile, teclado e acessibilidade das jornadas essenciais.
-3. Detalhar e depois conectar o navegador real da VPS, começando em modo somente leitura.
+1. Executar uma única bateria agrupada para P1.4–P1.7, incluindo reinício controlado e viewport móvel.
+2. Corrigir somente os defeitos encontrados e marcar como concluído o que tiver evidência.
+3. Depois da validação, escolher uma integração real; navegador/MCP, loja e canais exigem URLs, acesso e decisões do Chefe.
 
 ## Registro de continuidade — 11/11/2026
 
@@ -81,6 +90,7 @@ de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas princip
 ## Registro de continuidade — 12/11/2026 · P1.4 em validação
 
 - Implementado: foco visível global, alvos de toque, filtros roláveis, formulários móveis e navegação inferior com snap.
+- Acessibilidade adicional: skip-link, nomes bilíngues em controles por ícone, alvos de 44px no Universo e movimento reduzido.
 - Jornada AeroPartz: ordem de Tab do formulário da Loja preserva item → quantidade/valor → adicionar.
 - Estado: código aplicado, **não validado nesta rodada por decisão do Chefe de agrupar os testes mais adiante**.
 - Próximo passo exato: continuar o desenvolvimento desejado e, na rodada combinada, validar P1.4 em mobile/teclado antes de marcar concluído.
@@ -99,6 +109,7 @@ de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas princip
 - Implementado: card “Saúde do QG” no Cockpit para seis áreas essenciais.
 - Estados: disponível, verificando, dados antigos, indisponível e não verificado, com última atualização bem-sucedida.
 - Histórico: até oito transições recentes guardadas no navegador; quatro exibidas sem detalhes técnicos.
+- Ações: atualização manual das seis áreas e limpeza do histórico local.
 - Estado: código aplicado e **ainda não validado**, incluído na bateria agrupada solicitada pelo Chefe.
 - Próximo passo exato: tornar missões/tarefas em andamento recuperáveis após reinício do backend.
 
@@ -107,6 +118,8 @@ de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas princip
 - Implementado: leases de execução e recuperação no startup para missões normais e visuais interrompidas.
 - Idempotência: mensagens de recebimento, delegação, entrega, resumo e entrega visual têm IDs determinísticos.
 - Retomada: ignora tarefas/etapas concluídas, retoma `queued|working`, completa revisão pendente e proposta reservada.
+- Conversas: mensagens da Sala e Linha Direta mantêm job de resposta persistido e resposta determinística; ordens diretas
+  também reutilizam a mesma missão e memória após reinício.
 - Arquivos: `backend/lib/recovery.py`, `backend/lib/orchestrator.py`, `backend/routers/visual.py`, `backend/server.py`, índices.
 - Estado: código aplicado, **ainda não validado em reinício controlado** por decisão de agrupar testes.
 - Próximo passo exato: executar a bateria agrupada P1.4–P1.7 antes de qualquer integração real ou publicação.

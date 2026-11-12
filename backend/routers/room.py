@@ -19,6 +19,6 @@ async def list_messages():
 @router.post("/room/messages", response_model=RoomMessage)
 async def post_message(input: RoomMessageCreate):
     message = RoomMessage(sender_key="user", kind="chat", content=input.content)
-    await db.room_messages.insert_one(message.model_dump())
-    spawn(zero_reply_in_room())
+    await db.room_messages.insert_one({**message.model_dump(), "reply_status": "pending"})
+    spawn(zero_reply_in_room(message.id))
     return message

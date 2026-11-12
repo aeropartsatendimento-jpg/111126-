@@ -103,9 +103,11 @@ export default function Universe() {
           {mems.map((m, i) => {
             const p = polar(i, mems.length, 300, -Math.PI / 3);
             return (
-              <button key={m.id} data-testid={`universe-memory-${m.id}`} onClick={() => setSel({ type: "memory", id: m.id })} title={m.title}
-                className="universe-twinkle absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-200 shadow-[0_0_12px_rgba(186,230,253,0.9)] hover:scale-150"
-                style={{ ...pct(p), animationDelay: `${(i % 7) * 0.4}s` }} />
+              <button key={m.id} data-testid={`universe-memory-${m.id}`} onClick={() => setSel({ type: "memory", id: m.id })} title={m.title} aria-label={m.title}
+                className="universe-twinkle absolute flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full hover:scale-110"
+                style={{ ...pct(p), animationDelay: `${(i % 7) * 0.4}s` }}>
+                <span className="size-3 rounded-full bg-sky-200 shadow-[0_0_12px_rgba(186,230,253,0.9)]" />
+              </button>
             );
           })}
           {projs.map((pr, i) => {
@@ -128,7 +130,7 @@ export default function Universe() {
           <div className="rounded-xl border bg-white p-4 shadow-sm">
             {!sel && <p className="text-sm text-muted-foreground">{t("universe.pick")}</p>}
             {sel && (
-              <button className="float-right text-slate-400 hover:text-slate-700" onClick={() => setSel(null)} data-testid="universe-panel-close" aria-label="close">
+              <button className="float-right flex size-11 items-center justify-center text-slate-400 hover:text-slate-700" onClick={() => setSel(null)} data-testid="universe-panel-close" aria-label={t("common.close")}>
                 <X className="size-4" />
               </button>
             )}

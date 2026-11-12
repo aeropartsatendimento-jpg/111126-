@@ -465,7 +465,47 @@ async def review_task(task_id: str, approve: bool, note: str | None) -> dict | N
 
 # ---------- conversations ----------
 
-async def zero_reply_in_room() -> None:
+async def _claim_pending_reply(collection, source_id: str, response_id: str) -> bool:
+    if await collection.find_one({"id": response_id}, {"_id": 1}):
+        await collection.update_one(
+            {"id": source_id},
+            {"$set": {"reply_status": "completed", "updated_at": _now()}, "$unset": {"reply_lease_until": ""}},
+        )
+        return False
+    now = _now()
+    claimed = await collection.find_one_and_update(
+        {
+            "id": source_id,
+            "reply_status": {"$in": ["pending", "working"]},
+            "$or": [
+                {"reply_lease_until": {"$exists": False}},
+                {"reply_lease_until": {"$lte": now}},
+            ],
+        },
+        {
+            "$set": {
+                "reply_status": "working",
+                "reply_lease_until": now + timedelta(minutes=5),
+                "updated_at": now,
+            },
+            "$inc": {"reply_attempts": 1},
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    return claimed is not None
+
+
+async def _complete_pending_reply(collection, source_id: str) -> None:
+    await collection.update_one(
+        {"id": source_id},
+        {"$set": {"reply_status": "completed", "updated_at": _now()}, "$unset": {"reply_lease_until": ""}},
+    )
+
+
+async def zero_reply_in_room(source_message_id: str | None = None) -> None:
+    response_id = f"room-reply-{source_message_id}" if source_message_id else None
+    if source_message_id and not await _claim_pending_reply(db.room_messages, source_message_id, response_id):
+        return
     recent = await db.room_messages.find().sort("created_at", -1).to_list(12)
     transcript = "\n".join(f"{m.get('sender_key', '?')}: {m.get('content', '')[:300]}" for m in reversed(recent))
     zero = await _agent("zero") or {}
@@ -475,10 +515,15 @@ async def zero_reply_in_room() -> None:
     )
     if reply is None:
         reply = "[modo simulado] Entendido, Chefe. Se quiser, transforme isso em missão no Cockpit que eu delego agora."
-    await _post_room("zero", "chat", reply)
+    await _post_room("zero", "chat", reply, message_id=response_id)
+    if source_message_id:
+        await _complete_pending_reply(db.room_messages, source_message_id)
 
 
-async def zero_direct_reply() -> None:
+async def zero_direct_reply(source_message_id: str | None = None) -> None:
+    response_id = f"zero-reply-{source_message_id}" if source_message_id else None
+    if source_message_id and not await _claim_pending_reply(db.zero_messages, source_message_id, response_id):
+        return
     recent = await db.zero_messages.find().sort("created_at", -1).to_list(10)
     transcript = "\n".join(f"{'Chefe' if m.get('role') == 'user' else 'Zero'}: {m.get('content', '')[:400]}" for m in reversed(recent))
     zero = await _agent("zero") or {}
@@ -489,7 +534,7 @@ async def zero_direct_reply() -> None:
         session_id=f"direct-{_new_id()}", provider=zero.get("provider", "openai"), model=zero.get("model", "gpt-5.4"),
     )
     data = llm_json(raw)
-    msg = {"id": _new_id(), "role": "zero", "intent": "explicando", "proposal": None, "project_id": None, "mission_id": None, "created_at": _now()}
+    msg = {"id": response_id or _new_id(), "role": "zero", "intent": "explicando", "proposal": None, "project_id": None, "mission_id": None, "created_at": _now()}
     if data and str(data.get("reply") or "").strip():
         intent = data.get("intent") if data.get("intent") in ("explicando", "propondo", "executando") else "explicando"
         mission_text = str(data.get("mission") or "").strip()
@@ -498,18 +543,26 @@ async def zero_direct_reply() -> None:
         if intent in ("propondo", "executando") and mission_text:
             msg["proposal"] = mission_text[:1500]
             if intent == "executando":
-                mission = await start_mission(mission_text[:1500], pid)
+                deterministic_mission_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"qg-zero-direct:{source_message_id}")) if source_message_id else None
+                mission = await db.missions.find_one({"id": deterministic_mission_id}) if deterministic_mission_id else None
+                if not mission:
+                    mission = await start_mission(mission_text[:1500], pid, mission_id=deterministic_mission_id)
                 msg["mission_id"] = mission["id"]
                 last_user = next((m for m in recent if m.get("role") == "user"), None)
                 await remember("decisao_chefe", mission_text[:120], (last_user or {}).get("content", "")[:1000],
-                               "Ordem do Chefe na Linha Direta", pid)
+                               "Ordem do Chefe na Linha Direta", pid,
+                               memory_id=f"direct-order-{source_message_id}" if source_message_id else None)
         elif intent != "explicando":
             msg["intent"] = "explicando"
     elif raw:
         msg["content"] = raw.strip()
     else:
         msg["content"] = "[modo simulado] Estou online, Chefe. Mande a ordem que eu organizo o esquadrão."
-    await db.zero_messages.insert_one(msg)
+    if response_id:
+        await db.zero_messages.update_one({"id": response_id}, {"$setOnInsert": msg}, upsert=True)
+        await _complete_pending_reply(db.zero_messages, source_message_id)
+    else:
+        await db.zero_messages.insert_one(msg)
 
 
 async def run_briefing(

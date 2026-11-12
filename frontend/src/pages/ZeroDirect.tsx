@@ -211,7 +211,7 @@ export default function ZeroDirect() {
           className={`inline-flex size-11 shrink-0 items-center justify-center rounded-lg border transition-colors ${
             speakOn ? "border-blue-300 bg-blue-50 text-blue-700" : "border-border bg-white text-slate-400"
           }`}
-          aria-label={speakOn ? "voice on" : "voice off"}
+          aria-label={speakOn ? t("accessibility.voiceOn") : t("accessibility.voiceOff")}
         >
           {speakOn ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
         </button>
@@ -307,7 +307,7 @@ export default function ZeroDirect() {
             size="icon-lg"
             className="size-11 shrink-0"
             onClick={toggleMic}
-            aria-label={listening ? "stop mic" : "start mic"}
+            aria-label={listening ? t("accessibility.micStop") : t("accessibility.micStart")}
           >
             {listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
           </Button>

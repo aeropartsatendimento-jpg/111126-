@@ -73,7 +73,8 @@ export default function TaskCard({ task, compact = false }: { task: Task; compac
               data-testid={`task-review-note-${task.id}`}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Nota (opcional)"
+              placeholder={t("review.note")}
+              aria-label={t("review.note")}
               className="h-11 min-w-40 flex-1 text-xs"
             />
             <Button size="sm" className="h-11" data-testid={`task-approve-${task.id}`} disabled={review.isPending} onClick={() => review.mutate(true)}>

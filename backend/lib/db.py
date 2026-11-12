@@ -38,10 +38,12 @@ INDEXES: dict[str, list[IndexModel]] = {
     "room_messages": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("created_at", DESCENDING)], name="created_desc"),
+        IndexModel([("reply_status", ASCENDING), ("reply_lease_until", ASCENDING)], name="reply_status_lease"),
     ],
     "zero_messages": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("created_at", ASCENDING)], name="created_asc"),
+        IndexModel([("reply_status", ASCENDING), ("reply_lease_until", ASCENDING)], name="reply_status_lease"),
     ],
     "channels": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),

@@ -49,6 +49,8 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - **Recuperação de jobs**: no startup, o backend limpa leases do processo anterior e retoma missões normais
   `planning|delegating`, missões visuais `queued|running`, efeitos de revisão `pending` e propostas com missão reservada.
   Mensagens de recebimento, delegação, entrega e resumo usam IDs determinísticos para não duplicar após reinício.
+- Mensagens do Chefe na Sala e Linha Direta persistem `reply_status`; respostas pendentes são retomadas no startup,
+  usam ID determinístico e, na Linha Direta, ordens executáveis reservam missão/memória determinística.
 - **Contas salvas**: `GET/POST /accounts`, `PATCH/DELETE /accounts/{id}` — status available|busy|offline|unverified
   (seed: 5 contas, todas "unverified" — disponibilidade nunca verificada).
 - **Intenção do Zero** (linha direta): cada resposta é explicando|propondo|executando (JSON do LLM). executando →
@@ -99,6 +101,8 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
   a página; formulários de Loja, Projetos, Contas e Canais empilham em telas estreitas. Alvos principais têm 44px.
 - Teclado: foco visível global, ordem de Tab preservada nos formulários (incluindo item → quantidade → adicionar na Loja),
   rótulos acessíveis nos campos ajustados e animações respeitam `prefers-reduced-motion`.
+- Há atalho “Pular para o conteúdo principal”; controles por ícone têm nomes bilíngues e estrelas de Memória no
+  Universo usam alvo de toque de 44px sem alterar o tamanho visual do ponto.
 - Falhas de criação, edição, aprovação e envio exibem aviso persistente junto à ação, preservam o conteúdo digitado
   e oferecem repetir/fechar. Operações que podem ter sido recebidas antes da falha alertam sobre possível duplicidade.
 - A recuperação cobre missão, briefing, Sala, Linha Direta, proposta do Zero, missão visual, projetos, contas,
@@ -106,7 +110,7 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - O Cockpit inclui “Saúde do QG” para Esquadrão, Projetos, Tarefas, Sala, Loja e Canais, derivada do cache real
   das consultas: disponível, verificando, dados antigos, indisponível ou não verificado, com última atualização.
 - O navegador guarda até oito transições recentes de indisponibilidade/recuperação e mostra as quatro mais novas,
-  sem detalhes técnicos, payloads ou credenciais.
+  sem detalhes técnicos, payloads ou credenciais. O Chefe pode atualizar as seis áreas de uma vez e limpar o histórico local.
 
 ## Autenticação
 Nenhuma (app pessoal aberto, sem tela de login nem bloqueio de API). `EMERGENT_LLM_KEY` gerencia o cérebro em nuvem (backend/.env);

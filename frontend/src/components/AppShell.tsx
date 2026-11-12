@@ -126,6 +126,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-svh bg-background text-foreground">
+        <a
+          href="#qg-main-content"
+          data-testid="skip-to-content-link"
+          className="fixed left-3 top-3 z-[60] -translate-y-20 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-transform focus:translate-y-0"
+        >
+          {t("accessibility.skip")}
+        </a>
         {/* Desktop sidebar */}
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-slate-800 bg-[#0B132B] px-4 py-5 lg:flex">
           <BrandMark />
@@ -166,7 +173,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {/* Main content */}
-        <main className="pb-24 pt-14 lg:pb-6 lg:pl-64 lg:pt-0">{children}</main>
+        <main id="qg-main-content" tabIndex={-1} className="pb-24 pt-14 lg:pb-6 lg:pl-64 lg:pt-0">{children}</main>
 
         {/* Mobile bottom nav */}
         <nav

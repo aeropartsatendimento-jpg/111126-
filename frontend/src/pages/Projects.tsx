@@ -121,6 +121,7 @@ function ResumeCard({ project }: { project: Project }) {
                   data-testid={`project-input-${f}`}
                   value={draft[f]}
                   onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
+                  aria-label={t(FIELD_LABEL[f])}
                   rows={2}
                   className="mt-1 text-sm"
                 />

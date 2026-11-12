@@ -28,8 +28,8 @@ async def list_messages():
 @router.post("/zero/chat", response_model=DirectMessage)
 async def send_chat(input: ZeroChatCreate):
     message = DirectMessage(role="user", content=input.content)
-    await db.zero_messages.insert_one(message.model_dump())
-    spawn(zero_direct_reply())
+    await db.zero_messages.insert_one({**message.model_dump(), "reply_status": "pending"})
+    spawn(zero_direct_reply(message.id))
     return message
 
 

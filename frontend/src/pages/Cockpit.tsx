@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, ArrowRight, CheckCircle2, CloudOff, LoaderCircle, Send, Volume2 } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, CheckCircle2, CloudOff, LoaderCircle, RefreshCw, Send, Trash2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
@@ -55,6 +55,7 @@ function OperationalHealthCard() {
   const { t, lang } = useI18n();
   const queryClient = useQueryClient();
   const [, setRevision] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const previous = useRef<Record<string, HealthStatus>>({});
   const [events, setEvents] = useState<HealthEvent[]>(() => {
     try {
@@ -97,14 +98,40 @@ function OperationalHealthCard() {
   }, [statusSignature]);
 
   const areaLabel = (areaId: string) => t(HEALTH_AREAS.find((area) => area.id === areaId)?.label ?? areaId);
+  const refreshAll = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all(
+        HEALTH_AREAS.map((area) => queryClient.refetchQueries({ queryKey: area.queryKey, exact: true })),
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  const clearHistory = () => {
+    localStorage.removeItem(HEALTH_EVENTS_KEY);
+    setEvents([]);
+  };
 
   return (
     <Card data-testid="operational-health-card">
-      <CardHeader className="pb-3">
+      <CardHeader className="flex-row items-center justify-between gap-2 pb-3">
         <CardTitle className="flex items-center gap-2 font-heading text-base" data-testid="operational-health-title">
           <Activity className="size-4 text-blue-600" aria-hidden="true" />
           {t("health.title")}
         </CardTitle>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-11 sm:h-8"
+          data-testid="health-refresh-all-button"
+          disabled={refreshing}
+          onClick={() => void refreshAll()}
+        >
+          <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+          {refreshing ? t("health.refreshing") : t("health.refresh")}
+        </Button>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" data-testid="operational-health-areas">
@@ -122,7 +149,20 @@ function OperationalHealthCard() {
           ))}
         </div>
         <div className="border-t pt-3" data-testid="health-event-history">
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500" data-testid="health-history-title">{t("health.history")}</p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500" data-testid="health-history-title">{t("health.history")}</p>
+            {events.length > 0 && (
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 sm:min-h-8"
+                data-testid="health-history-clear-button"
+                onClick={clearHistory}
+              >
+                <Trash2 className="size-3" aria-hidden="true" />
+                {t("health.clear")}
+              </button>
+            )}
+          </div>
           {events.length === 0 ? (
             <p className="text-xs text-muted-foreground" data-testid="health-history-empty">{t("health.historyEmpty")}</p>
           ) : (
