@@ -1,0 +1,80 @@
+{
+  "iteration": 8,
+  "summary": "Frontend-only Phase 1 of DataRegionState (loading/unavailable/stale/retry per query region) across Cockpit, Sala, Linha Direta, Projetos/Tarefas/Loja, Canais/Navegador, Universo/Memoria, and PT/EN i18n. Wrote one named browser check per acceptance-matrix criterion (8/8), using page.route() 503 interception per endpoint to force each state, then releasing it to prove recovery without a page reload. Re-ran the full existing backend regression suite (36/36 passed, no backend contract changed this round) and re-ran one check against the public preview URL. All 8 criteria pass.",
+  "passed": 9,
+  "failed": 0,
+  "flaky": 0,
+  "blocked": 0,
+  "test_error": 0,
+  "retest_needed": false,
+  "checks": [
+    {
+      "criterion": "Regressão backend (nenhuma mudança de contrato nesta rodada)",
+      "name": "backend test suite (36 files under /app/backend/tests)",
+      "lane": "backend",
+      "status": "passed",
+      "evidence": "cd /app/backend && python -m pytest -q -p no:cacheprovider -> '36 passed in 21.87s'. No new API contract in this round; re-run confirms no regression from the frontend-only DataRegionState change."
+    },
+    {
+      "criterion": "O componente de consulta distingue carregamento, indisponibilidade e dados antigos",
+      "name": "cockpit-loading-unavailable-stale",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Intercepted GET /api/agents on Cockpit: delayed+failing response showed only 'cockpit-agents-data-loading' (no blank page); after retries exhausted with no cache, 'cockpit-agents-data-unavailable' + retry button appeared; after one success then a renewed failure, 'cockpit-agents-data-stale' appeared while agent-card-zero data stayed visible."
+    },
+    {
+      "criterion": "A nova tentativa recupera a região sem recarregar a página",
+      "name": "retry-recovers-without-reload",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "Cockpit projects region forced to 503 -> 'cockpit-mission-projects-data-unavailable' shown; set a window.__tscheckMarker, released the route, clicked 'cockpit-mission-projects-data-retry-button' -> unavailable banner disappeared, mission-project-select reappeared, and window.__tscheckMarker was still 'still-mounted' (no full reload) with URL unchanged."
+    },
+    {
+      "criterion": "O Cockpit mantém painéis independentes utilizáveis",
+      "name": "cockpit-panels-independent-on-failure",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "GET /api/store/items forced to 503 on Cockpit: 'cockpit-store-data-unavailable' shown while cockpit-title, nav-room, mission-input, dispatch-mission-btn, agent-card-zero, briefing-card and stats-row all stayed visible. Re-ran this check against the public preview URL too -> PASSED."
+    },
+    {
+      "criterion": "Sala e Linha Direta preservam estrutura e dados",
+      "name": "room-and-zero-preserve-structure",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "/sala with GET /api/room/messages failing -> 'room-page-data-unavailable' shown while room-filter-all, room-message-input, room-send-btn stayed usable; after one success then a renewed failure, 'room-page-data-stale' appeared with the input still present. /zero with GET /api/zero/messages failing -> 'zero-messages-data-unavailable' shown while zero-chat-input and zero-chat-send-btn stayed usable."
+    },
+    {
+      "criterion": "Projetos, Tarefas e Loja diferenciam vazio de falha",
+      "name": "store-empty-vs-failure",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "GET /api/store/items returning 200 [] showed 'store-stock-empty' (domain empty, form still usable); flipping the same cached empty state to 503 showed 'store-data-stale' (warned, not silently 'empty'); a fresh load with no cache at all returning 503 showed 'store-data-unavailable' with no empty-state text rendered."
+    },
+    {
+      "criterion": "Canais e Navegador Visual têm recuperação localizada",
+      "name": "channels-and-visual-localized-recovery",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "/canais with GET /api/channels failing -> 'channels-data-unavailable' + retry shown while infra-card and mcp-server-card stayed visible; GET /api/mcp/info failing independently -> 'mcp-info-data-unavailable' while channels-title stayed. /navegador with GET /api/visual/missions failing -> 'visual-history-data-unavailable' + retry while visual-mission-form-card and visual-url-input stayed usable."
+    },
+    {
+      "criterion": "Universo e Memória preservam dados parciais",
+      "name": "universe-and-memory-preserve-partial-data",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "/universo with GET /api/memories failing -> 'universe-memories-data-unavailable' shown while universe-canvas and universe-agent-zero rendered normally and universe-agents-data-unavailable / universe-projects-data-unavailable were absent. /memoria with the same failure -> 'memories-data-unavailable' shown while memory-form, memory-title-input and memory-save-btn stayed usable."
+    },
+    {
+      "criterion": "Mensagens de estado funcionam em português e inglês",
+      "name": "state-messages-i18n-and-keyboard-retry",
+      "lane": "browser",
+      "status": "passed",
+      "evidence": "On /loja with GET /api/store/items failing: PT unavailable title/copy/retry text captured, then toggled to EN via lang-toggle-btn and all three strings changed (not equal to PT). Retry button received keyboard focus (toBeFocused) and Enter key activated it -> 'store-data-unavailable' disappeared (503 route removed beforehand), proving keyboard accessibility."
+    }
+  ],
+  "bugs": [],
+  "action_items": [
+    "Matrix had 8 criteria; all 8 got a browser check plus the pre-existing backend suite was re-run as regression (no new API contract this round, so no new backend test file was required).",
+    "No credentials needed: app has no login (SPEC.md confirms open personal app, no auth)."
+  ]
+}

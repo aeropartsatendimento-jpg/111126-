@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import StatusBadge from "@/components/StatusBadge";
 import TaskCard from "@/components/TaskCard";
+import DataRegionState from "@/components/DataRegionState";
 
 const FIELDS = ["objective", "in_progress", "blocker", "next_step"] as const;
 type Field = (typeof FIELDS)[number];
@@ -31,11 +32,12 @@ function ResumeCard({ project }: { project: Project }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<Field, string>>({ objective: "", in_progress: "", blocker: "", next_step: "" });
 
-  const { data: tasks } = useQuery({
+  const tasksQuery = useQuery({
     queryKey: ["tasks", "project", project.id],
     queryFn: () => apiGet<Task[]>(`/tasks?project_id=${project.id}`),
     refetchInterval: 3000,
   });
+  const tasks = tasksQuery.data;
 
   const resume = useMutation({
     mutationFn: () => apiPost<Mission>(`/projects/${project.id}/resume`),
@@ -124,7 +126,8 @@ function ResumeCard({ project }: { project: Project }) {
 
       <div className="space-y-3">
         <h2 className="font-heading text-base font-bold">{t("projects.tasks")}</h2>
-        {(tasks ?? []).length === 0 && <p className="text-sm text-muted-foreground">{t("tasks.empty")}</p>}
+        <DataRegionState query={tasksQuery} testId={`project-${project.id}-tasks-data`} />
+        {tasks !== undefined && tasks.length === 0 && <p className="text-sm text-muted-foreground" data-testid={`project-${project.id}-tasks-empty`}>{t("tasks.empty")}</p>}
         {(tasks ?? []).map((task) => (
           <TaskCard key={task.id} task={task} compact />
         ))}
@@ -138,7 +141,8 @@ function AccountsCard() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [provider, setProvider] = useState("");
-  const { data: accounts } = useQuery({ queryKey: ["accounts"], queryFn: () => apiGet<Account[]>("/accounts") });
+  const accountsQuery = useQuery({ queryKey: ["accounts"], queryFn: () => apiGet<Account[]>("/accounts") });
+  const accounts = accountsQuery.data;
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["accounts"] });
 
   const add = useMutation({
@@ -169,6 +173,10 @@ function AccountsCard() {
         <CardDescription>{t("accounts.sub")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
+        <DataRegionState query={accountsQuery} testId="accounts-data" />
+        {accounts !== undefined && accounts.length === 0 && (
+          <p className="text-sm text-muted-foreground" data-testid="accounts-empty">{t("data.empty")}</p>
+        )}
         {(accounts ?? []).map((a) => (
           <div key={a.id} data-testid={`account-item-${a.id}`} className="flex items-center gap-2 rounded-lg border bg-white p-2.5">
             <div className="min-w-0 flex-1">
@@ -213,11 +221,12 @@ export default function Projects() {
   const [selected, setSelected] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
 
-  const { data: projects } = useQuery({
+  const projectsQuery = useQuery({
     queryKey: ["projects"],
     queryFn: () => apiGet<Project[]>("/projects"),
     refetchInterval: 4000,
   });
+  const projects = projectsQuery.data;
   const list = projects ?? [];
   const current = list.find((p) => p.id === selected) ?? list[0];
 
@@ -245,7 +254,8 @@ export default function Projects() {
         <aside className="space-y-3 lg:col-span-4">
           <Card>
             <CardContent className="space-y-2 p-3">
-              {list.length === 0 && <p className="p-2 text-sm text-muted-foreground">{t("projects.empty")}</p>}
+              <DataRegionState query={projectsQuery} testId="projects-data" />
+              {projects !== undefined && list.length === 0 && <p className="p-2 text-sm text-muted-foreground" data-testid="projects-empty">{t("projects.empty")}</p>}
               {list.map((p) => (
                 <button
                   key={p.id}

@@ -87,6 +87,10 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
 - i18n PT/EN (`src/lib/i18n.tsx`, localStorage `qgzero.lang`, default pt); tema claro default + dark (next-themes).
 - Fontes: Outfit / Plus Jakarta Sans / JetBrains Mono. Polling react-query 2–10s. `motion` nas mensagens.
 - TS mirrors de todos os Pydantic models em `src/lib/types.ts`.
+- Consultas exibem estado localizado de carregamento, vazio real, indisponibilidade ou dados antigos. Falhas preservam
+  shell, ações estáticas e cache anterior identificado; cada região tem “Tentar novamente” e se recupera sem recarregar a página.
+- O padrão cobre Cockpit, Sala, Projetos, Tarefas, Linha Direta, Navegador, Loja, Canais, Universo e Memória;
+  falhas de mutação continuam separadas em avisos próprios sem ocultar dados consultáveis.
 
 ## Autenticação
 Nenhuma (app pessoal aberto, sem tela de login nem bloqueio de API). `EMERGENT_LLM_KEY` gerencia o cérebro em nuvem (backend/.env);
@@ -96,6 +100,7 @@ sem chave/serviço fora → modo simulado automático.
 - A prévia da Sala mostra as mensagens mais recentes, não as primeiras do histórico.
 - Respostas assíncronas da Sala e da Linha Direta ficam referenciadas até terminarem.
 - Briefing manual usa a data de `America/Sao_Paulo`, igual à rotina automática.
+- Uma consulta indisponível não transforma a rota em página vazia nem apresenta cache antigo como informação atual.
 
 ## Para re-semeadar
 `cd /app/backend && python seed.py` (upsert por key; não derruba coleções).

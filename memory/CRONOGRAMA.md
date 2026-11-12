@@ -165,12 +165,14 @@ Evidência: `test_reports/iteration_7.json` — 7/7 critérios da rotina e suít
 
 ### P1.3 — Estados de erro e recuperação visíveis
 
-- [ ] Mapear páginas que hoje convertem falha de API em lista vazia.
-- [ ] Preservar shell, navegação e conteúdo estático quando o backend estiver fora.
-- [ ] Exibir erro localizado apenas na região dependente de dados, com botão “Tentar novamente”.
-- [ ] Não exibir dado antigo como se estivesse online após refetch falhar.
-- [ ] Testar retorno do backend, timeout e recuperação sem recarregar a página.
-- [ ] Critério de aceite: nenhuma rota fica em branco e o usuário distingue vazio real de indisponibilidade.
+- [x] Mapear páginas que hoje convertem falha de API em lista vazia.
+- [x] Preservar shell, navegação e conteúdo estático quando o backend estiver fora.
+- [x] Exibir erro localizado apenas na região dependente de dados, com botão “Tentar novamente”.
+- [x] Não exibir dado antigo como se estivesse online após refetch falhar.
+- [x] Testar retorno do backend, timeout e recuperação sem recarregar a página.
+- [x] Critério de aceite: nenhuma rota fica em branco e o usuário distingue vazio real de indisponibilidade.
+
+Evidência: `test_reports/iteration_8.json` — 8/8 critérios de interface aprovados, recuperação sem reload e PT/EN validados.
 
 ### P1.4 — Cobertura móvel e acessibilidade
 

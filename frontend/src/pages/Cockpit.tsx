@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import AgentAvatar from "@/components/AgentAvatar";
 import StatusBadge from "@/components/StatusBadge";
 import RoomStream from "@/components/RoomStream";
+import DataRegionState from "@/components/DataRegionState";
 
 const CHIPS = ["chip.weather", "chip.store", "chip.emails", "chip.cameras"];
 
@@ -67,11 +68,12 @@ function Connector() {
 
 function HierarchyPanel() {
   const { t } = useI18n();
-  const { data: agents } = useQuery({
+  const agentsQuery = useQuery({
     queryKey: ["agents"],
     queryFn: () => apiGet<Agent[]>("/agents"),
     refetchInterval: 3000,
   });
+  const agents = agentsQuery.data;
   const byKey = new Map((agents ?? []).map((a) => [a.key, a]));
 
   return (
@@ -80,6 +82,7 @@ function HierarchyPanel() {
         <CardTitle className="font-heading text-base">{t("hierarchy.title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-0">
+        <DataRegionState query={agentsQuery} testId="cockpit-agents-data" className="mb-3" />
         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3" data-testid="agent-card-boss">
           <div className="flex items-center gap-2.5">
             <AgentAvatar agentKey="user" size={38} />
@@ -109,7 +112,8 @@ function MissionPanel() {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
   const [projectId, setProjectId] = useState("none");
-  const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: () => apiGet<Project[]>("/projects") });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiGet<Project[]>("/projects") });
+  const projects = projectsQuery.data;
   const projectName = (id: string) => (id === "none" ? t("projects.pick") : (projects ?? []).find((p) => p.id === id)?.name ?? id);
 
   const dispatch = useMutation({
@@ -137,6 +141,7 @@ function MissionPanel() {
           placeholder={t("mission.placeholder")}
           rows={3}
         />
+        <DataRegionState query={projectsQuery} testId="cockpit-mission-projects-data" />
         <Select value={projectId} onValueChange={(v: string) => setProjectId(v)}>
           <SelectTrigger className="w-full" data-testid="mission-project-select">
             <SelectValue>{(v) => `📁 ${projectName(v as string)}`}</SelectValue>
@@ -184,15 +189,17 @@ function BriefingCard() {
   const queryClient = useQueryClient();
   const [cityDraft, setCityDraft] = useState("");
 
-  const { data: briefings } = useQuery({
+  const briefingsQuery = useQuery({
     queryKey: ["briefings"],
     queryFn: () => apiGet<Briefing[]>("/briefing"),
     refetchInterval: 10000,
   });
-  const { data: settings } = useQuery({
+  const settingsQuery = useQuery({
     queryKey: ["briefing-settings"],
     queryFn: () => apiGet<BriefingSettings>("/briefing/settings"),
   });
+  const briefings = briefingsQuery.data;
+  const settings = settingsQuery.data;
 
   useEffect(() => {
     if (settings?.city) setCityDraft(settings.city);
@@ -236,38 +243,42 @@ function BriefingCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs font-medium">
-            <Checkbox
-              data-testid="briefing-auto-toggle"
-              checked={settings?.auto ?? true}
-              onCheckedChange={(c) => save.mutate({ auto: Boolean(c) })}
+        <DataRegionState query={briefingsQuery} testId="cockpit-briefings-data" />
+        <DataRegionState query={settingsQuery} testId="cockpit-briefing-settings-data" />
+        {settings && (
+          <div className="flex flex-wrap items-center gap-3" data-testid="briefing-settings-controls">
+            <label className="flex items-center gap-2 text-xs font-medium">
+              <Checkbox
+                data-testid="briefing-auto-toggle"
+                checked={settings.auto}
+                onCheckedChange={(c) => save.mutate({ auto: Boolean(c) })}
+              />
+              {t("briefing.auto")}
+            </label>
+            <Select value={String(settings.hour)} onValueChange={(v: string) => save.mutate({ hour: Number(v) })}>
+              <SelectTrigger size="sm" className="w-20" data-testid="briefing-hour-select">
+                <SelectValue>{(v) => `${v as string}h`}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {BRIEFING_HOURS.map((h) => (
+                  <SelectItem key={h} value={String(h)}>
+                    {`${h}h`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              data-testid="briefing-city-input"
+              value={cityDraft}
+              onChange={(e) => setCityDraft(e.target.value)}
+              onBlur={() => {
+                if (cityDraft.trim() && cityDraft.trim() !== settings.city) save.mutate({ city: cityDraft.trim() });
+              }}
+              placeholder={t("briefing.city")}
+              className="h-9 w-36 text-xs"
             />
-            {t("briefing.auto")}
-          </label>
-          <Select value={String(settings?.hour ?? 7)} onValueChange={(v: string) => save.mutate({ hour: Number(v) })}>
-            <SelectTrigger size="sm" className="w-20" data-testid="briefing-hour-select">
-              <SelectValue>{(v) => `${v as string}h`}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {BRIEFING_HOURS.map((h) => (
-                <SelectItem key={h} value={String(h)}>
-                  {`${h}h`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            data-testid="briefing-city-input"
-            value={cityDraft}
-            onChange={(e) => setCityDraft(e.target.value)}
-            onBlur={() => {
-              if (cityDraft.trim() && cityDraft.trim() !== settings?.city) save.mutate({ city: cityDraft.trim() });
-            }}
-            placeholder={t("briefing.city")}
-            className="h-9 w-36 text-xs"
-          />
-        </div>
+          </div>
+        )}
         {latest ? (
           <div className="rounded-lg border bg-sky-50/50 p-3" data-testid="briefing-latest">
             <p className="mb-1 font-mono text-[11px] text-slate-500">
@@ -275,11 +286,11 @@ function BriefingCard() {
             </p>
             <p className="line-clamp-6 whitespace-pre-wrap text-sm leading-relaxed">{latest.content.replace(/\*\*/g, "")}</p>
           </div>
-        ) : (
+        ) : briefings !== undefined ? (
           <p className="text-sm text-muted-foreground" data-testid="briefing-empty">
             {t("briefing.empty")}
           </p>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -287,8 +298,10 @@ function BriefingCard() {
 
 function StatsRow() {
   const { t } = useI18n();
-  const { data: missions } = useQuery({ queryKey: ["missions"], queryFn: () => apiGet<Mission[]>("/missions"), refetchInterval: 3000 });
-  const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => apiGet<Task[]>("/tasks"), refetchInterval: 3000 });
+  const missionsQuery = useQuery({ queryKey: ["missions"], queryFn: () => apiGet<Mission[]>("/missions"), refetchInterval: 3000 });
+  const tasksQuery = useQuery({ queryKey: ["tasks"], queryFn: () => apiGet<Task[]>("/tasks"), refetchInterval: 3000 });
+  const missions = missionsQuery.data;
+  const tasks = tasksQuery.data;
 
   const active = (missions ?? []).filter((m) => m.status === "planning" || m.status === "delegating").length;
   const queued = (tasks ?? []).filter((x) => x.status === "queued" || x.status === "working").length;
@@ -297,11 +310,13 @@ function StatsRow() {
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="stats-row">
+      <DataRegionState query={missionsQuery} testId="cockpit-missions-data" className="col-span-2 sm:col-span-4" />
+      <DataRegionState query={tasksQuery} testId="cockpit-tasks-data" className="col-span-2 sm:col-span-4" />
       {[
-        { label: t("stats.active"), value: active, tid: "stat-active" },
-        { label: t("stats.queued"), value: queued, tid: "stat-queued" },
-        { label: t("status.review"), value: review, tid: "stat-review" },
-        { label: t("status.verified"), value: done, tid: "stat-done" },
+        { label: t("stats.active"), value: missions === undefined ? "—" : active, tid: "stat-active" },
+        { label: t("stats.queued"), value: tasks === undefined ? "—" : queued, tid: "stat-queued" },
+        { label: t("status.review"), value: tasks === undefined ? "—" : review, tid: "stat-review" },
+        { label: t("status.verified"), value: tasks === undefined ? "—" : done, tid: "stat-done" },
       ].map(({ label, value, tid }) => (
         <div key={tid} className="rounded-lg border bg-white p-3 text-center shadow-sm">
           <p className="font-heading text-2xl font-bold text-blue-600" data-testid={tid}>
@@ -316,7 +331,8 @@ function StatsRow() {
 
 function TasksPreview() {
   const { t } = useI18n();
-  const { data: tasks } = useQuery({ queryKey: ["tasks"], queryFn: () => apiGet<Task[]>("/tasks"), refetchInterval: 3000 });
+  const tasksQuery = useQuery({ queryKey: ["tasks"], queryFn: () => apiGet<Task[]>("/tasks"), refetchInterval: 3000 });
+  const tasks = tasksQuery.data;
   const shown = (tasks ?? []).slice(0, 5);
 
   return (
@@ -329,7 +345,8 @@ function TasksPreview() {
         </Link>
       </CardHeader>
       <CardContent className="space-y-2">
-        {shown.length === 0 && <p className="py-2 text-sm text-muted-foreground">{t("tasks.empty")}</p>}
+        <DataRegionState query={tasksQuery} testId="cockpit-task-preview-data" />
+        {tasks !== undefined && shown.length === 0 && <p className="py-2 text-sm text-muted-foreground" data-testid="cockpit-task-preview-empty">{t("tasks.empty")}</p>}
         {shown.map((task) => (
           <div key={task.id} data-testid={`task-preview-${task.id}`} className="flex items-center gap-2.5 rounded-lg border bg-white p-2.5">
             <AgentAvatar agentKey={task.agent_key} size={28} />
@@ -344,7 +361,8 @@ function TasksPreview() {
 
 function StoreCard() {
   const { t } = useI18n();
-  const { data: items } = useQuery({ queryKey: ["store"], queryFn: () => apiGet<StoreItem[]>("/store/items"), refetchInterval: 5000 });
+  const storeQuery = useQuery({ queryKey: ["store"], queryFn: () => apiGet<StoreItem[]>("/store/items"), refetchInterval: 5000 });
+  const items = storeQuery.data;
   const all = items ?? [];
   const groups = [
     { key: "stock", status: "critical", label: "store.stock", dot: "bg-red-500" },
@@ -361,13 +379,14 @@ function StoreCard() {
         </Link>
       </CardHeader>
       <CardContent className="space-y-3">
+        <DataRegionState query={storeQuery} testId="cockpit-store-data" />
         {groups.map((g) => {
           const hot = all.filter((i) => i.kind === g.key && i.status === g.status);
           return (
             <div key={g.key} data-testid={`store-group-${g.key}`}>
               <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
                 <span className={`size-2 rounded-full ${g.dot}`} />
-                {t(g.label)} · {t(`store.${g.status}`)} <span className="font-mono">({hot.length})</span>
+                {t(g.label)} · {t(`store.${g.status}`)} <span className="font-mono">({items === undefined ? "—" : hot.length})</span>
               </p>
               {hot.slice(0, 3).map((i) => (
                 <p key={i.id} className="truncate pl-3.5 text-sm">
@@ -384,7 +403,8 @@ function StoreCard() {
 
 function ChannelsPreview() {
   const { t, lang } = useI18n();
-  const { data: channels } = useQuery({ queryKey: ["channels"], queryFn: () => apiGet<Channel[]>("/channels"), refetchInterval: 5000 });
+  const channelsQuery = useQuery({ queryKey: ["channels"], queryFn: () => apiGet<Channel[]>("/channels"), refetchInterval: 5000 });
+  const channels = channelsQuery.data;
   const shown = (channels ?? []).slice(0, 5);
 
   return (
@@ -397,6 +417,8 @@ function ChannelsPreview() {
         </Link>
       </CardHeader>
       <CardContent className="space-y-2">
+        <DataRegionState query={channelsQuery} testId="cockpit-channels-data" />
+        {channels !== undefined && shown.length === 0 && <p className="text-sm text-muted-foreground" data-testid="cockpit-channels-empty">{t("channels.empty")}</p>}
         {shown.map((ch) => (
           <div key={ch.id} data-testid={`channel-preview-${ch.key}`} className="flex items-center gap-2.5">
             <span className={`size-2 shrink-0 rounded-full ${ch.status === "connected" ? "bg-emerald-500" : "bg-slate-300"}`} />

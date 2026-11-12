@@ -13,6 +13,7 @@ import type { DirectMessage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AgentAvatar from "@/components/AgentAvatar";
+import DataRegionState from "@/components/DataRegionState";
 
 // Minimal typings for the Web Speech API (not in the DOM lib).
 type SRResultItem = { 0: { transcript: string }; isFinal: boolean };
@@ -57,11 +58,12 @@ export default function ZeroDirect() {
   const callRef = useRef(false);
   const waitingRef = useRef(false); // call mode: sent, waiting for Zero
 
-  const { data: messages } = useQuery({
+  const zeroQuery = useQuery({
     queryKey: ["zero"],
     queryFn: () => apiGet<DirectMessage[]>("/zero/messages"),
     refetchInterval: callMode ? 1200 : 2000,
   });
+  const messages = zeroQuery.data;
   const list = messages ?? [];
   const thinking = list.length > 0 && list[list.length - 1].role === "user";
 
@@ -238,7 +240,8 @@ export default function ZeroDirect() {
       )}
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-lg border bg-slate-50/60 p-3" data-testid="zero-chat" aria-live="polite">
-        {list.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground" data-testid="zero-empty">{t("zero.empty")}</p>}
+        <DataRegionState query={zeroQuery} testId="zero-messages-data" />
+        {messages !== undefined && list.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground" data-testid="zero-empty">{t("zero.empty")}</p>}
         {list.map((m) => (
           <motion.div
             key={m.id}

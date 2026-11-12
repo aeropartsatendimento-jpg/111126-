@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import StatusBadge from "@/components/StatusBadge";
+import DataRegionState from "@/components/DataRegionState";
 
 function ChannelIcon({ channelKey }: { channelKey: string }) {
   switch (channelKey) {
@@ -176,24 +177,28 @@ function ChannelCard({ channel }: { channel: Channel }) {
 
 function McpServerCard() {
   const { t } = useI18n();
-  const { data } = useQuery({ queryKey: ["mcp-info"], queryFn: () => apiGet<McpInfo>("/mcp/info"), refetchInterval: 15000 });
+  const mcpQuery = useQuery({ queryKey: ["mcp-info"], queryFn: () => apiGet<McpInfo>("/mcp/info"), refetchInterval: 15000 });
+  const data = mcpQuery.data;
   const url = `${window.location.origin}${data?.path ?? "/api/mcp"}`;
   return (
     <Card data-testid="mcp-server-card">
       <CardHeader className="pb-3">
         <CardTitle className="flex flex-wrap items-center gap-2 font-heading text-base">
           {t("mcp.title")}
-          <span
-            data-testid="mcp-token-status"
-            className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-              data?.token_configured ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"
-            }`}
-          >
-            {data?.token_configured ? t("mcp.tokenOn") : t("mcp.tokenOff")}
-          </span>
+          {data && (
+            <span
+              data-testid="mcp-token-status"
+              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                data.token_configured ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"
+              }`}
+            >
+              {data.token_configured ? t("mcp.tokenOn") : t("mcp.tokenOff")}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <DataRegionState query={mcpQuery} testId="mcp-info-data" />
         <div>
           <p className="text-xs font-semibold text-slate-500">{t("mcp.endpoint")}</p>
           <code className="mt-1 block break-all rounded-md bg-slate-900 px-3 py-2 font-mono text-xs text-sky-300" data-testid="mcp-endpoint">
@@ -246,11 +251,12 @@ function InfraCard() {
 
 export default function Channels() {
   const { t } = useI18n();
-  const { data: channels } = useQuery({
+  const channelsQuery = useQuery({
     queryKey: ["channels"],
     queryFn: () => apiGet<Channel[]>("/channels"),
     refetchInterval: 5000,
   });
+  const channels = channelsQuery.data;
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-4 p-3 sm:p-6">
@@ -261,6 +267,10 @@ export default function Channels() {
         <p className="text-sm text-muted-foreground">{t("channels.sub")}</p>
       </header>
 
+      <DataRegionState query={channelsQuery} testId="channels-data" />
+      {channels !== undefined && channels.length === 0 && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground" data-testid="channels-empty">{t("channels.empty")}</p>
+      )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {(channels ?? []).map((ch) => (
           <ChannelCard key={ch.id} channel={ch} />

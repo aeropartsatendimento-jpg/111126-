@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import type { Agent, Memory, Project } from "@/lib/types";
 import { buttonVariants } from "@/components/ui/button";
 import { MEM_STYLE } from "@/pages/MemoryPage";
+import DataRegionState from "@/components/DataRegionState";
 
 type Sel = { type: "agent"; key: string } | { type: "project"; id: string } | { type: "memory"; id: string } | null;
 
@@ -32,9 +33,12 @@ const pct = (p: { x: number; y: number }) => ({ left: `${(p.x / W) * 100}%`, top
 export default function Universe() {
   const { t, lang } = useI18n();
   const [sel, setSel] = useState<Sel>(null);
-  const { data: agents } = useQuery({ queryKey: ["agents"], queryFn: () => apiGet<Agent[]>("/agents"), refetchInterval: 4000 });
-  const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: () => apiGet<Project[]>("/projects"), refetchInterval: 6000 });
-  const { data: memories } = useQuery({ queryKey: ["memories"], queryFn: () => apiGet<Memory[]>("/memories"), refetchInterval: 8000 });
+  const agentsQuery = useQuery({ queryKey: ["agents"], queryFn: () => apiGet<Agent[]>("/agents"), refetchInterval: 4000 });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiGet<Project[]>("/projects"), refetchInterval: 6000 });
+  const memoriesQuery = useQuery({ queryKey: ["memories"], queryFn: () => apiGet<Memory[]>("/memories"), refetchInterval: 8000 });
+  const agents = agentsQuery.data;
+  const projects = projectsQuery.data;
+  const memories = memoriesQuery.data;
 
   const byKey = new Map((agents ?? []).map((a) => [a.key, a]));
   const projs = projects ?? [];
@@ -71,6 +75,20 @@ export default function Universe() {
         <h1 className="font-heading text-2xl font-bold tracking-tight" data-testid="universe-title">{t("universe.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("universe.sub")}</p>
       </header>
+      <div className="grid gap-2 sm:grid-cols-3" data-testid="universe-data-states">
+        <div>
+          <DataRegionState query={agentsQuery} testId="universe-agents-data" />
+          {agents !== undefined && agents.length === 0 && <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground" data-testid="universe-agents-empty">{t("data.empty")}</p>}
+        </div>
+        <div>
+          <DataRegionState query={projectsQuery} testId="universe-projects-data" />
+          {projects !== undefined && projects.length === 0 && <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground" data-testid="universe-projects-empty">{t("projects.empty")}</p>}
+        </div>
+        <div>
+          <DataRegionState query={memoriesQuery} testId="universe-memories-data" />
+          {memories !== undefined && memories.length === 0 && <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground" data-testid="universe-memories-empty">{t("memory.empty")}</p>}
+        </div>
+      </div>
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#070D1F] lg:col-span-9" style={{ aspectRatio: `${W} / ${H}` }} data-testid="universe-canvas">
           <div className="universe-stars absolute inset-0" />

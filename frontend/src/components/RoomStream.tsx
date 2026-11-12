@@ -12,6 +12,7 @@ import type { RoomMessage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import AgentAvatar from "@/components/AgentAvatar";
+import DataRegionState from "@/components/DataRegionState";
 
 const FILTERS = ["all", "zero", "pro", "jarvis", "aluna", "plus", "user", "system"];
 
@@ -27,11 +28,12 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const { data: messages } = useQuery({
+  const roomQuery = useQuery({
     queryKey: ["room"],
     queryFn: () => apiGet<RoomMessage[]>("/room/messages"),
     refetchInterval: 2500,
   });
+  const messages = roomQuery.data;
 
   const post = useMutation({
     mutationFn: (content: string) => apiPost<RoomMessage>("/room/messages", { content }),
@@ -79,7 +81,12 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
         aria-live="polite"
         className={`min-h-0 space-y-3 overflow-y-auto pr-1 ${full ? "flex-1" : ""}`}
       >
-        {shown.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t("room.empty")}</p>}
+        <DataRegionState query={roomQuery} testId={full ? "room-page-data" : "cockpit-room-data"} />
+        {messages !== undefined && shown.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground" data-testid={full ? "room-page-empty" : "cockpit-room-empty"}>
+            {t("room.empty")}
+          </p>
+        )}
         {shown.map((m) => {
           const style =
             m.kind === "delegation"

@@ -9,6 +9,7 @@ import type { StoreItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import DataRegionState from "@/components/DataRegionState";
 
 export const STORE_KINDS = [
   { kind: "stock", label: "store.stock", hot: "critical", cold: "ok" },
@@ -22,7 +23,7 @@ const HOT_STYLE: Record<string, string> = {
   active: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
-function KindColumn({ kind, label, hot, cold, items }: { kind: string; label: string; hot: string; cold: string; items: StoreItem[] }) {
+function KindColumn({ kind, label, hot, cold, items, dataReady }: { kind: string; label: string; hot: string; cold: string; items: StoreItem[]; dataReady: boolean }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
@@ -60,7 +61,7 @@ function KindColumn({ kind, label, hot, cold, items }: { kind: string; label: st
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {sorted.length === 0 && <p className="text-sm text-muted-foreground">{t("store.empty")}</p>}
+        {dataReady && sorted.length === 0 && <p className="text-sm text-muted-foreground" data-testid={`store-${kind}-empty`}>{t("store.empty")}</p>}
         {sorted.map((it) => (
           <div key={it.id} data-testid={`store-item-${it.id}`} className="flex items-center gap-2 rounded-lg border bg-white p-2.5">
             <div className="min-w-0 flex-1">
@@ -101,7 +102,8 @@ function KindColumn({ kind, label, hot, cold, items }: { kind: string; label: st
 
 export default function StorePanel() {
   const { t } = useI18n();
-  const { data: items } = useQuery({ queryKey: ["store"], queryFn: () => apiGet<StoreItem[]>("/store/items"), refetchInterval: 5000 });
+  const storeQuery = useQuery({ queryKey: ["store"], queryFn: () => apiGet<StoreItem[]>("/store/items"), refetchInterval: 5000 });
+  const items = storeQuery.data;
   const all = items ?? [];
 
   return (
@@ -112,9 +114,10 @@ export default function StorePanel() {
         </h1>
         <p className="text-sm text-muted-foreground">{t("store.sub")}</p>
       </header>
+      <DataRegionState query={storeQuery} testId="store-data" />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {STORE_KINDS.map((k) => (
-          <KindColumn key={k.kind} {...k} items={all.filter((i) => i.kind === k.kind)} />
+          <KindColumn key={k.kind} {...k} items={all.filter((i) => i.kind === k.kind)} dataReady={items !== undefined} />
         ))}
       </div>
     </div>

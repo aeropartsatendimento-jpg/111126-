@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import DataRegionState from "@/components/DataRegionState";
 
 export const MEM_KINDS = ["decisao_chefe", "fato_verificado", "proposta", "antiga"] as const;
 export const MEM_STYLE: Record<string, string> = {
@@ -30,8 +31,10 @@ export default function MemoryPage() {
   const [replaces, setReplaces] = useState<Memory | null>(null);
   const [filter, setFilter] = useState("all");
 
-  const { data: memories } = useQuery({ queryKey: ["memories"], queryFn: () => apiGet<Memory[]>("/memories"), refetchInterval: 6000 });
-  const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: () => apiGet<Project[]>("/projects") });
+  const memoriesQuery = useQuery({ queryKey: ["memories"], queryFn: () => apiGet<Memory[]>("/memories"), refetchInterval: 6000 });
+  const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => apiGet<Project[]>("/projects") });
+  const memories = memoriesQuery.data;
+  const projects = projectsQuery.data;
   const projectName = (id: string | null) => (projects ?? []).find((p) => p.id === id)?.name;
   const all = memories ?? [];
   const byId = new Map(all.map((m) => [m.id, m]));
@@ -94,7 +97,9 @@ export default function MemoryPage() {
       </div>
 
       <div className="space-y-2.5">
-        {shown.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t("memory.empty")}</p>}
+        <DataRegionState query={memoriesQuery} testId="memories-data" />
+        <DataRegionState query={projectsQuery} testId="memory-projects-data" />
+        {memories !== undefined && shown.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground" data-testid="memory-empty">{t("memory.empty")}</p>}
         {shown.map((m) => (
           <Card key={m.id} data-testid={`memory-item-${m.id}`} className={m.superseded_by ? "opacity-60" : ""}>
             <CardContent className="space-y-1.5 p-4">

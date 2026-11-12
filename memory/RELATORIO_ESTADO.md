@@ -2,8 +2,8 @@
 
 ## Resumo
 
-O núcleo do QG está funcional e validado em modo simulado. A rodada mais recente migrou a Rotina da Manhã
-do loop em memória para cron gerenciado, com webhook autenticado, confirmação rápida e idempotência persistida.
+O núcleo do QG está funcional e validado em modo simulado. A rodada mais recente concluiu estados localizados
+de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas principais, com recuperação sem recarregar.
 
 ## Pronto e testado
 
@@ -25,6 +25,8 @@ do loop em memória para cron gerenciado, com webhook autenticado, confirmação
 - Compatibilidade com missões visuais antigas sem o campo `actions`.
 - Rotina automática resistente a reinícios, respeitando `auto`, horário configurável e `America/Sao_Paulo`.
 - Entregas repetidas do cron e retomadas após falha não duplicam briefing nem mensagem na Sala.
+- Cockpit, Sala, Projetos, Tarefas, Linha Direta, Navegador, Loja, Canais, Universo e Memória preservam o shell em falhas.
+- Cada consulta indisponível oferece nova tentativa; cache anterior permanece visível e explicitamente marcado como antigo.
 
 ## Garantias do Navegador Visual atual
 
@@ -37,6 +39,8 @@ do loop em memória para cron gerenciado, com webhook autenticado, confirmação
 
 ## Evidências mais recentes
 
+- `test_reports/iteration_8.json`: **8/8 critérios de interface aprovados**, sem falhas ou bloqueios.
+- Recuperação sem reload, regiões independentes, vazio versus falha, cache antigo, PT/EN e teclado foram validados.
 - `test_reports/iteration_7.json`: **7/7 critérios aprovados**; suíte backend completa **36/36**.
 - Gate local: autenticação/validação/duplicata do webhook, TypeScript e jornada Cockpit → Sala aprovados.
 - `test_reports/iteration_5.json`: **6/6 critérios aprovados**, sem falhas ou bloqueios.
@@ -55,9 +59,8 @@ do loop em memória para cron gerenciado, com webhook autenticado, confirmação
 ## Próximos passos de maior valor
 
 1. Tornar missões/jobs recuperáveis após reinício do backend.
-2. Diferenciar dados vazios, backend indisponível e cache antigo em cada painel.
+2. Validar mobile, teclado e acessibilidade das jornadas essenciais.
 3. Detalhar e depois conectar o navegador real da VPS, começando em modo somente leitura.
-4. Validar mobile, teclado e acessibilidade das jornadas essenciais.
 
 ## Registro de continuidade — 11/11/2026
 
@@ -67,6 +70,13 @@ do loop em memória para cron gerenciado, com webhook autenticado, confirmação
 - Testes: gate local aprovado; Testing Agent 7/7; suíte backend 36/36; navegador aprovado.
 - Ambiente: seed idempotente reaplicado; agentes, canais, projetos e exemplos restaurados sem apagar dados existentes.
 - Próximo passo exato: iniciar P1.3, estados de erro e recuperação visíveis.
+
+## Registro de continuidade — 12/11/2026
+
+- Tarefa: P1.3 concluída (Fase 1 de erros e recuperação).
+- Arquivos principais: `frontend/src/components/DataRegionState.tsx`, páginas do QG e `frontend/src/lib/i18n.tsx`.
+- Testes: gate proporcional aprovado; Testing Agent 8/8; regressão backend 36/36.
+- Próximo passo exato: iniciar P1.4, cobertura móvel e acessibilidade.
 
 ## Referências
 

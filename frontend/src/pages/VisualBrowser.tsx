@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import DataRegionState from "@/components/DataRegionState";
 
 function validUrl(value: string): boolean {
   try {
@@ -49,11 +50,12 @@ export default function VisualBrowser() {
   const [actionTypes, setActionTypes] = useState<string[]>([...ACTION_TYPES]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data: missions, isError, refetch } = useQuery({
+  const missionsQuery = useQuery({
     queryKey: ["visual-missions"],
     queryFn: () => apiGet<VisualMission[]>("/visual/missions"),
     refetchInterval: 1200,
   });
+  const missions = missionsQuery.data;
   const list = missions ?? [];
   const current = list.find((mission) => mission.id === selectedId) ?? list[0];
 
@@ -173,15 +175,8 @@ export default function VisualBrowser() {
               <CardTitle className="font-heading text-base" data-testid="visual-history-title">{t("visual.history")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {isError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3" data-testid="visual-history-error">
-                  <p className="text-xs text-red-700" data-testid="visual-history-error-copy">{t("visual.loadError")}</p>
-                  <Button size="sm" variant="outline" className="mt-2" data-testid="visual-history-retry" onClick={() => refetch()}>
-                    {t("visual.retry")}
-                  </Button>
-                </div>
-              )}
-              {!isError && list.length === 0 && (
+              <DataRegionState query={missionsQuery} testId="visual-history-data" />
+              {missions !== undefined && list.length === 0 && (
                 <p className="text-sm text-muted-foreground" data-testid="visual-history-empty">{t("visual.empty")}</p>
               )}
               {list.map((mission) => (

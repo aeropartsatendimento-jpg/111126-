@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import type { Task } from "@/lib/types";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TaskCard from "@/components/TaskCard";
+import DataRegionState from "@/components/DataRegionState";
 
 const FILTERS = ["all", "review", "working", "queued", "verified", "rejected", "failed"];
 
@@ -12,11 +13,12 @@ export default function Tasks() {
   const { t } = useI18n();
   const [filter, setFilter] = useState("all");
 
-  const { data: tasks, isLoading } = useQuery({
+  const tasksQuery = useQuery({
     queryKey: ["tasks"],
     queryFn: () => apiGet<Task[]>("/tasks"),
     refetchInterval: 2500,
   });
+  const tasks = tasksQuery.data;
 
   const all = tasks ?? [];
   const shown = all.filter((task) => filter === "all" || task.status === filter);
@@ -42,7 +44,8 @@ export default function Tasks() {
       </header>
 
       <div className="space-y-3">
-        {shown.length === 0 && !isLoading && (
+        <DataRegionState query={tasksQuery} testId="tasks-data" />
+        {tasks !== undefined && shown.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground" data-testid="tasks-empty">
             {t("tasks.empty")}
           </p>
