@@ -58,21 +58,23 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3" data-testid="room-stream">
       {full && (
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              data-testid={`room-filter-${f}`}
-              onClick={() => setFilter(f)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                filter === f
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-border bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {f === "all" ? t("room.filterAll") : agentLabel(f, t)}
-            </button>
-          ))}
+        <div className="-mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0" data-testid="room-filter-scroll">
+          <div className="flex w-max gap-1.5">
+            {FILTERS.map((f) => (
+              <button
+                key={f}
+                data-testid={`room-filter-${f}`}
+                onClick={() => setFilter(f)}
+                className={`min-h-11 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  filter === f
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-border bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {f === "all" ? t("room.filterAll") : agentLabel(f, t)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -149,7 +151,7 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
       </div>
 
       {full && (
-        <div className="flex items-end gap-2 border-t pt-3">
+        <div className="grid grid-cols-1 items-end gap-2 border-t pt-3 sm:grid-cols-[minmax(0,1fr)_auto]">
           <Textarea
             data-testid="room-message-input"
             value={draft}
@@ -167,6 +169,7 @@ export default function RoomStream({ limit = 200, full = false }: Props) {
           <Button
             data-testid="room-send-btn"
             size="lg"
+            className="h-11 w-full sm:w-auto"
             disabled={!draft.trim() || post.isPending}
             onClick={() => draft.trim() && post.mutate(draft.trim())}
           >

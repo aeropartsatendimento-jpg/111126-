@@ -78,6 +78,13 @@ de carregamento, vazio, indisponibilidade e dados antigos nas dez áreas princip
 - Testes: gate proporcional aprovado; Testing Agent 8/8; regressão backend 36/36.
 - Próximo passo exato: iniciar P1.4, cobertura móvel e acessibilidade.
 
+## Registro de continuidade — 12/11/2026 · P1.4 em validação
+
+- Implementado: foco visível global, alvos de toque, filtros roláveis, formulários móveis e navegação inferior com snap.
+- Jornada AeroPartz: ordem de Tab do formulário da Loja preserva item → quantidade/valor → adicionar.
+- Estado: código aplicado, **não validado nesta rodada por decisão do Chefe de agrupar os testes mais adiante**.
+- Próximo passo exato: continuar o desenvolvimento desejado e, na rodada combinada, validar P1.4 em mobile/teclado antes de marcar concluído.
+
 ## Referências
 
 - Especificação viva: `memory/SPEC.md`

@@ -65,13 +65,13 @@ export default function TaskCard({ task, compact = false }: { task: Task; compac
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Nota (opcional)"
-              className="h-9 min-w-40 flex-1 text-xs"
+              className="h-11 min-w-40 flex-1 text-xs"
             />
-            <Button size="sm" className="h-9" data-testid={`task-approve-${task.id}`} disabled={review.isPending} onClick={() => review.mutate(true)}>
+            <Button size="sm" className="h-11" data-testid={`task-approve-${task.id}`} disabled={review.isPending} onClick={() => review.mutate(true)}>
               <Check className="size-4" />
               {t("review.approve")}
             </Button>
-            <Button size="sm" variant="outline" className="h-9" data-testid={`task-reject-${task.id}`} disabled={review.isPending} onClick={() => review.mutate(false)}>
+            <Button size="sm" variant="outline" className="h-11" data-testid={`task-reject-${task.id}`} disabled={review.isPending} onClick={() => review.mutate(false)}>
               <Undo2 className="size-4" />
               {t("review.reject")}
             </Button>

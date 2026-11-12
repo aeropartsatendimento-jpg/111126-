@@ -91,6 +91,10 @@ Nota: `gemini-2.5-flash-lite` é rejeitado pelo gateway — não usar. `GET /api
   shell, ações estáticas e cache anterior identificado; cada região tem “Tentar novamente” e se recupera sem recarregar a página.
 - O padrão cobre Cockpit, Sala, Projetos, Tarefas, Linha Direta, Navegador, Loja, Canais, Universo e Memória;
   falhas de mutação continuam separadas em avisos próprios sem ocultar dados consultáveis.
+- Mobile: navegação inferior tem rolagem horizontal previsível; filtros longos de Sala, Tarefas e Memória não comprimem
+  a página; formulários de Loja, Projetos, Contas e Canais empilham em telas estreitas. Alvos principais têm 44px.
+- Teclado: foco visível global, ordem de Tab preservada nos formulários (incluindo item → quantidade → adicionar na Loja),
+  rótulos acessíveis nos campos ajustados e animações respeitam `prefers-reduced-motion`.
 
 ## Autenticação
 Nenhuma (app pessoal aberto, sem tela de login nem bloqueio de API). `EMERGENT_LLM_KEY` gerencia o cérebro em nuvem (backend/.env);
@@ -101,6 +105,7 @@ sem chave/serviço fora → modo simulado automático.
 - Respostas assíncronas da Sala e da Linha Direta ficam referenciadas até terminarem.
 - Briefing manual usa a data de `America/Sao_Paulo`, igual à rotina automática.
 - Uma consulta indisponível não transforma a rota em página vazia nem apresenta cache antigo como informação atual.
+- Ajustes mobile/acessibilidade de P1.4 estão implementados, com validação final conscientemente adiada pelo Chefe.
 
 ## Para re-semeadar
 `cd /app/backend && python seed.py` (upsert por key; não derruba coleções).

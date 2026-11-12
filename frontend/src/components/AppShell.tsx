@@ -129,7 +129,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {/* Desktop sidebar */}
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-slate-800 bg-[#0B132B] px-4 py-5 lg:flex">
           <BrandMark />
-          <nav className="mt-8 flex-1 space-y-1">
+          <nav className="mt-8 flex-1 space-y-1" aria-label={t("nav.primary")}>
             {NAV.map(({ to, key, icon: Icon, tid, end }) => (
               <NavLink
                 key={to}
@@ -166,10 +166,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         {/* Main content */}
-        <main className="pb-20 pt-14 lg:pb-6 lg:pl-64 lg:pt-0">{children}</main>
+        <main className="pb-24 pt-14 lg:pb-6 lg:pl-64 lg:pt-0">{children}</main>
 
         {/* Mobile bottom nav */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto border-t border-border bg-white/95 backdrop-blur lg:hidden">
+        <nav
+          className="fixed inset-x-0 bottom-0 z-40 flex snap-x snap-mandatory scroll-px-2 gap-1 overflow-x-auto overscroll-x-contain border-t border-border bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+          aria-label={t("nav.primary")}
+          data-testid="mobile-bottom-nav"
+        >
           {NAV.map(({ to, key, icon: Icon, tid, end }) => (
             <NavLink
               key={to}
@@ -178,7 +182,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               data-testid={`${tid}-mobile`}
               className={({ isActive }) =>
                 cn(
-                  "flex min-h-11 min-w-16 flex-1 shrink-0 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium",
+                  "flex min-h-12 min-w-[4.5rem] flex-1 shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-2 text-[10px] font-medium",
                   isActive ? "text-blue-600" : "text-slate-500"
                 )
               }

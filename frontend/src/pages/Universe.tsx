@@ -90,7 +90,8 @@ export default function Universe() {
         </div>
       </div>
       <div className="grid gap-4 lg:grid-cols-12">
-        <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#070D1F] lg:col-span-9" style={{ aspectRatio: `${W} / ${H}` }} data-testid="universe-canvas">
+        <div className="overflow-x-auto rounded-2xl lg:col-span-9" data-testid="universe-canvas-scroll">
+        <div className="relative min-w-[720px] overflow-hidden rounded-2xl border border-slate-800 bg-[#070D1F]" style={{ aspectRatio: `${W} / ${H}` }} data-testid="universe-canvas">
           <div className="universe-stars absolute inset-0" />
           <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 size-full" aria-hidden>
             <ellipse cx={C.x} cy={C.y} rx={270 * 1.35} ry={270} fill="none" stroke="rgba(148,163,184,0.12)" strokeDasharray="4 8" />
@@ -120,6 +121,7 @@ export default function Universe() {
           {node("zero", C, zeroSize)}
           {node("pro", PRO, 58)}
           {Object.entries(WORKERS).map(([k, p]) => node(k, p, 48))}
+        </div>
         </div>
 
         <aside className="lg:col-span-3" data-testid="universe-panel">

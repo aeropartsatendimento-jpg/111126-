@@ -177,11 +177,14 @@ Evidência: `test_reports/iteration_8.json` — 8/8 critérios de interface apro
 ### P1.4 — Cobertura móvel e acessibilidade
 
 - [ ] Rodar as jornadas principais em viewport móvel.
-- [ ] Validar navegação inferior, overflow de filtros, formulários e cartões longos.
-- [ ] Validar foco visível, uso por teclado, nomes acessíveis e contraste.
+- [~] Validar navegação inferior, overflow de filtros, formulários e cartões longos (ajustes implementados; teste adiado).
+- [~] Validar foco visível, uso por teclado, nomes acessíveis e contraste (ajustes implementados; teste adiado).
 - [ ] Repetir o ensaio AeroPartz citado no projeto seed, incluindo a etapa de quantidade via Tab.
 - [ ] Registrar o resultado na ficha `seed-project-aeropartz`.
 - [ ] Critério de aceite: missão, revisão e loja operam por teclado e em tela móvel sem bloqueio.
+
+Implementado sem validação final nesta rodada: foco global, alvos móveis, formulários responsivos, filtros roláveis,
+navegação inferior com snap e canvas do Universo navegável horizontalmente. Não marcar `[x]` antes da bateria combinada.
 
 ## 6. P2 — integrações reais bloqueadas por decisão ou acesso
 

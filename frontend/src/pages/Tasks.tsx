@@ -29,18 +29,20 @@ export default function Tasks() {
         <h1 className="font-heading text-2xl font-bold tracking-tight" data-testid="tasks-title">
           {t("tasks.title")}
         </h1>
-        <Tabs value={filter} onValueChange={(v: string) => setFilter(v)}>
-          <TabsList data-testid="tasks-filter" className="flex-wrap">
-            {FILTERS.map((f) => (
-              <TabsTrigger key={f} value={f} data-testid={`tasks-filter-${f}`}>
-                {f === "all" ? t("tasks.filterAll") : t(`status.${f}`)}
-                <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
-                  {f === "all" ? all.length : all.filter((x) => x.status === f).length}
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="-mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0" data-testid="tasks-filter-scroll">
+          <Tabs value={filter} onValueChange={(v: string) => setFilter(v)}>
+            <TabsList data-testid="tasks-filter" className="h-auto w-max min-w-full flex-nowrap justify-start">
+              {FILTERS.map((f) => (
+                <TabsTrigger key={f} value={f} data-testid={`tasks-filter-${f}`} className="min-h-11 shrink-0">
+                  {f === "all" ? t("tasks.filterAll") : t(`status.${f}`)}
+                  <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
+                    {f === "all" ? all.length : all.filter((x) => x.status === f).length}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
       </header>
 
       <div className="space-y-3">

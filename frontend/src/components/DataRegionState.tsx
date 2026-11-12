@@ -57,7 +57,7 @@ export default function DataRegionState({ query, testId, className }: DataRegion
           type="button"
           size="sm"
           variant="outline"
-          className="h-8 border-red-300 bg-white text-red-800 hover:bg-red-100"
+          className="h-11 border-red-300 bg-white text-red-800 hover:bg-red-100 sm:h-8"
           data-testid={`${testId}-retry-button`}
           disabled={query.isFetching}
           onClick={() => void query.refetch()}
@@ -88,7 +88,7 @@ export default function DataRegionState({ query, testId, className }: DataRegion
           type="button"
           size="sm"
           variant="outline"
-          className="h-8 border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+          className="h-11 border-amber-300 bg-white text-amber-900 hover:bg-amber-100 sm:h-8"
           data-testid={`${testId}-retry-button`}
           disabled={query.isFetching}
           onClick={() => void query.refetch()}

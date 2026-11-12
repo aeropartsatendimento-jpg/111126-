@@ -74,12 +74,12 @@ function ResumeCard({ project }: { project: Project }) {
             <StatusBadge status={project.status} testid="project-status" />
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button data-testid="project-resume-btn" disabled={resume.isPending} onClick={() => resume.mutate()}>
+            <Button className="min-h-11" data-testid="project-resume-btn" disabled={resume.isPending} onClick={() => resume.mutate()}>
               <Play className="size-4" />
               {t("projects.resume")}
             </Button>
             {!editing && (
-              <Button variant="outline" data-testid="project-edit-btn" onClick={startEdit}>
+              <Button className="min-h-11" variant="outline" data-testid="project-edit-btn" onClick={startEdit}>
                 {t("projects.edit")}
               </Button>
             )}
@@ -112,11 +112,11 @@ function ResumeCard({ project }: { project: Project }) {
             </div>
           ))}
           {editing && (
-            <div className="flex gap-2 sm:col-span-2">
-              <Button data-testid="project-save-btn" disabled={save.isPending} onClick={() => save.mutate(draft)}>
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <Button className="min-h-11 flex-1 sm:flex-none" data-testid="project-save-btn" disabled={save.isPending} onClick={() => save.mutate(draft)}>
                 {t("projects.save")}
               </Button>
-              <Button variant="ghost" onClick={() => setEditing(false)}>
+              <Button className="size-11" size="icon" variant="ghost" data-testid="project-edit-cancel-btn" aria-label={t("common.cancel")} onClick={() => setEditing(false)}>
                 ✕
               </Button>
             </div>
@@ -178,8 +178,8 @@ function AccountsCard() {
           <p className="text-sm text-muted-foreground" data-testid="accounts-empty">{t("data.empty")}</p>
         )}
         {(accounts ?? []).map((a) => (
-          <div key={a.id} data-testid={`account-item-${a.id}`} className="flex items-center gap-2 rounded-lg border bg-white p-2.5">
-            <div className="min-w-0 flex-1">
+          <div key={a.id} data-testid={`account-item-${a.id}`} className="flex flex-wrap items-center gap-2 rounded-lg border bg-white p-2.5 sm:flex-nowrap">
+            <div className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
               <p className="truncate text-sm font-semibold">{a.name}</p>
               <p className="truncate text-xs text-muted-foreground">
                 {a.provider}
@@ -187,7 +187,7 @@ function AccountsCard() {
               </p>
             </div>
             <Select value={a.status} onValueChange={(v: string) => setStatus.mutate({ id: a.id, status: v })}>
-              <SelectTrigger size="sm" className="w-36" data-testid={`account-status-${a.id}`}>
+              <SelectTrigger size="sm" className="h-11 flex-1 sm:h-8 sm:w-36 sm:flex-none" data-testid={`account-status-${a.id}`}>
                 <SelectValue>{(v) => t(`accounts.status.${v as string}`)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -198,15 +198,17 @@ function AccountsCard() {
                 ))}
               </SelectContent>
             </Select>
-            <Button size="icon-sm" variant="ghost" data-testid={`account-delete-${a.id}`} onClick={() => remove.mutate(a.id)} aria-label="remove">
+            <Button size="icon-sm" variant="ghost" className="size-11 sm:size-8" data-testid={`account-delete-${a.id}`} onClick={() => remove.mutate(a.id)} aria-label={t("common.remove")}>
               <Trash2 className="size-4" />
             </Button>
           </div>
         ))}
-        <div className="flex flex-wrap gap-2 pt-2">
-          <Input data-testid="account-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("accounts.name")} className="h-9 flex-1 text-sm" />
-          <Input data-testid="account-provider-input" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t("accounts.provider")} className="h-9 flex-1 text-sm" />
-          <Button size="sm" className="h-9" data-testid="account-add-btn" disabled={!name.trim() || !provider.trim() || add.isPending} onClick={() => add.mutate()}>
+        <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
+          <label htmlFor="account-name" className="sr-only">{t("accounts.name")}</label>
+          <Input id="account-name" data-testid="account-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("accounts.name")} className="h-11 text-sm" />
+          <label htmlFor="account-provider" className="sr-only">{t("accounts.provider")}</label>
+          <Input id="account-provider" data-testid="account-provider-input" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t("accounts.provider")} className="h-11 text-sm" />
+          <Button size="sm" className="h-11 sm:col-span-2" data-testid="account-add-btn" disabled={!name.trim() || !provider.trim() || add.isPending} onClick={() => add.mutate()}>
             {t("accounts.add")}
           </Button>
         </div>
@@ -261,7 +263,7 @@ export default function Projects() {
                   key={p.id}
                   data-testid={`project-item-${p.id}`}
                   onClick={() => setSelected(p.id)}
-                  className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                  className={`min-h-11 w-full rounded-lg border p-3 text-left transition-colors ${
                     current?.id === p.id ? "border-blue-500 bg-blue-50/60" : "bg-white hover:bg-slate-50"
                   }`}
                 >
@@ -270,9 +272,10 @@ export default function Projects() {
                   {p.blocker && <p className="mt-1 truncate text-[11px] font-medium text-amber-700">⚠ {p.blocker}</p>}
                 </button>
               ))}
-              <div className="flex gap-2 border-t pt-3">
-                <Input data-testid="project-new-input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("projects.name")} className="h-9 text-sm" />
-                <Button size="sm" className="h-9" data-testid="project-create-btn" disabled={newName.trim().length < 2 || create.isPending} onClick={() => create.mutate()}>
+              <div className="grid grid-cols-1 gap-2 border-t pt-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <label htmlFor="project-new-name" className="sr-only">{t("projects.name")}</label>
+                <Input id="project-new-name" data-testid="project-new-input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("projects.name")} className="h-11 text-sm" />
+                <Button size="sm" className="h-11" data-testid="project-create-btn" disabled={newName.trim().length < 2 || create.isPending} onClick={() => create.mutate()}>
                   <FolderPlus className="size-4" />
                   {t("projects.create")}
                 </Button>

@@ -161,7 +161,7 @@ function MissionPanel() {
               key={chip}
               data-testid={`mission-chip-${i}`}
               onClick={() => setDraft(t(chip))}
-              className="rounded-full border border-border bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-50"
+              className="min-h-11 rounded-full border border-border bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-50"
             >
               {t(chip)}
             </button>
@@ -247,7 +247,7 @@ function BriefingCard() {
         <DataRegionState query={settingsQuery} testId="cockpit-briefing-settings-data" />
         {settings && (
           <div className="flex flex-wrap items-center gap-3" data-testid="briefing-settings-controls">
-            <label className="flex items-center gap-2 text-xs font-medium">
+            <label className="flex min-h-11 items-center gap-2 text-xs font-medium">
               <Checkbox
                 data-testid="briefing-auto-toggle"
                 checked={settings.auto}

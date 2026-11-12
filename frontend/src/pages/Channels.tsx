@@ -47,9 +47,11 @@ function SearchPanel() {
 
   return (
     <div className="mt-4 space-y-3 border-t pt-4" data-testid="search-panel">
-      <p className="font-heading text-sm font-bold">{t("search.title")}</p>
-      <div className="flex gap-2">
+      <p className="font-heading text-sm font-bold" data-testid="search-title">{t("search.title")}</p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label htmlFor="channel-search" className="sr-only">{t("search.input")}</label>
         <Input
+          id="channel-search"
           data-testid="channel-search-input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -59,7 +61,7 @@ function SearchPanel() {
             if (e.key === "Enter") runSearch();
           }}
         />
-        <Button data-testid="channel-search-btn" className="h-11" disabled={!query.trim() || search.isPending} onClick={runSearch}>
+        <Button data-testid="channel-search-btn" className="h-11 w-full sm:w-auto" disabled={!query.trim() || search.isPending} onClick={runSearch}>
           {search.isPending ? t("search.searching") : t("search.btn")}
         </Button>
       </div>
@@ -76,7 +78,7 @@ function SearchPanel() {
       <div className="space-y-2.5">
         {(results?.results ?? []).map((hit, i) => (
           <article key={hit.url + i} className="rounded-lg border p-3" data-testid={`search-result-item-${i}`}>
-            <a href={hit.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-700 underline-offset-2 hover:underline">
+            <a href={hit.url} target="_blank" rel="noreferrer" data-testid={`search-result-link-${i}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 underline-offset-2 hover:underline">
               {hit.title}
             </a>
             <p className="mt-0.5 break-all font-mono text-[11px] text-emerald-700">{hit.url}</p>
@@ -135,7 +137,7 @@ function ChannelCard({ channel }: { channel: Channel }) {
           <Button
             data-testid={`channel-${channel.key}-toggle`}
             variant={channel.status === "connected" ? "outline" : "default"}
-            className="w-full"
+            className="min-h-11 w-full"
             onClick={() =>
               patch.mutate({ status: channel.status === "connected" ? "disconnected" : "connected" })
             }
@@ -147,19 +149,20 @@ function ChannelCard({ channel }: { channel: Channel }) {
 
         {configField && (
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">{t(configLabel)}</Label>
-            <div className="flex gap-2">
+            <Label htmlFor={`channel-${channel.key}-config`} className="text-xs text-muted-foreground">{t(configLabel)}</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
+                id={`channel-${channel.key}-config`}
                 data-testid={`channel-${channel.key}-config-input`}
                 value={configValue}
                 onChange={(e) => setConfigValue(e.target.value)}
-                className="h-9 text-sm"
+                className="h-11 text-sm"
               />
               <Button
                 data-testid={`channel-${channel.key}-config-save`}
                 variant="secondary"
                 size="sm"
-                className="h-9"
+                className="h-11 w-full sm:w-auto"
                 disabled={patch.isPending}
                 onClick={() => patch.mutate({ config: { ...channel.config, [configField]: configValue } })}
               >

@@ -57,14 +57,14 @@ function KindColumn({ kind, label, hot, cold, items, dataReady }: { kind: string
     <Card data-testid={`store-column-${kind}`}>
       <CardHeader className="pb-3">
         <CardTitle className="font-heading text-base">
-          {t(label)} <span className="font-mono text-xs text-muted-foreground">· {items.filter((i) => i.status === hot).length} {t(`store.${hot}`).toLowerCase()}</span>
+          {t(label)} <span className="font-mono text-xs text-muted-foreground">· {dataReady ? items.filter((i) => i.status === hot).length : "—"} {t(`store.${hot}`).toLowerCase()}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {dataReady && sorted.length === 0 && <p className="text-sm text-muted-foreground" data-testid={`store-${kind}-empty`}>{t("store.empty")}</p>}
         {sorted.map((it) => (
-          <div key={it.id} data-testid={`store-item-${it.id}`} className="flex items-center gap-2 rounded-lg border bg-white p-2.5">
-            <div className="min-w-0 flex-1">
+          <div key={it.id} data-testid={`store-item-${it.id}`} className="flex flex-wrap items-center gap-2 rounded-lg border bg-white p-2.5 sm:flex-nowrap">
+            <div className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
               <p className="truncate text-sm font-semibold">
                 {it.title}
                 {it.is_sample && <span className="ml-1.5 rounded border border-dashed border-slate-300 px-1 text-[10px] font-medium text-slate-500">{t("store.sample")}</span>}
@@ -77,21 +77,23 @@ function KindColumn({ kind, label, hot, cold, items, dataReady }: { kind: string
             <button
               data-testid={`store-toggle-${it.id}`}
               onClick={() => toggle.mutate(it)}
-              className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+              className={`min-h-11 shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors sm:min-h-8 ${
                 it.status === hot ? HOT_STYLE[hot] : "border-slate-200 bg-slate-50 text-slate-500"
               }`}
             >
               {t(`store.${it.status}`)}
             </button>
-            <Button size="icon-sm" variant="ghost" data-testid={`store-delete-${it.id}`} onClick={() => remove.mutate(it.id)} aria-label="remove">
+            <Button size="icon-sm" variant="ghost" className="size-11 sm:size-8" data-testid={`store-delete-${it.id}`} onClick={() => remove.mutate(it.id)} aria-label="remove">
               <Trash2 className="size-4" />
             </Button>
           </div>
         ))}
-        <div className="flex gap-2 border-t pt-3">
-          <Input data-testid={`store-${kind}-title-input`} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("store.itemTitle")} className="h-9 text-sm" />
-          <Input data-testid={`store-${kind}-value-input`} value={value} onChange={(e) => setValue(e.target.value)} placeholder={t("store.value")} className="h-9 w-28 text-sm" />
-          <Button size="sm" className="h-9" data-testid={`store-${kind}-add-btn`} disabled={!title.trim() || add.isPending} onClick={() => add.mutate()}>
+        <div className="grid grid-cols-1 gap-2 border-t pt-3 sm:grid-cols-[minmax(0,1fr)_7rem_auto]">
+          <label htmlFor={`store-${kind}-title`} className="sr-only">{t("store.itemTitle")}</label>
+          <Input id={`store-${kind}-title`} data-testid={`store-${kind}-title-input`} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("store.itemTitle")} className="h-11 text-sm" />
+          <label htmlFor={`store-${kind}-value`} className="sr-only">{t("store.value")}</label>
+          <Input id={`store-${kind}-value`} data-testid={`store-${kind}-value-input`} value={value} onChange={(e) => setValue(e.target.value)} placeholder={t("store.value")} className="h-11 w-full text-sm" />
+          <Button size="sm" className="h-11 w-full sm:w-auto" data-testid={`store-${kind}-add-btn`} disabled={!title.trim() || add.isPending} onClick={() => add.mutate()}>
             {t("store.add")}
           </Button>
         </div>

@@ -65,35 +65,39 @@ export default function MemoryPage() {
             <p className="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800" data-testid="memory-replacing">
               <History className="mr-1 inline size-3.5" />
               {t("memory.replacing")}: {replaces.title}{" "}
-              <button className="underline" onClick={() => setReplaces(null)}>✕</button>
+              <button className="min-h-11 px-2 underline" data-testid="memory-replacing-cancel" aria-label={t("common.cancel")} onClick={() => setReplaces(null)}>✕</button>
             </p>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[12rem_minmax(0,1fr)]">
             <Select value={kind} onValueChange={(v: string) => setKind(v)}>
-              <SelectTrigger className="w-48" data-testid="memory-kind-select">
+              <SelectTrigger className="h-11 w-full" data-testid="memory-kind-select">
                 <SelectValue>{(v) => t(`memory.kind.${v as string}`)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {MEM_KINDS.map((k) => <SelectItem key={k} value={k}>{t(`memory.kind.${k}`)}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input data-testid="memory-title-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("memory.what")} className="min-w-48 flex-1" />
+            <label htmlFor="memory-title-field" className="sr-only">{t("memory.what")}</label>
+            <Input id="memory-title-field" data-testid="memory-title-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("memory.what")} className="h-11 min-w-0" />
           </div>
-          <Textarea data-testid="memory-content-input" value={content} onChange={(e) => setContent(e.target.value)} placeholder={t("memory.why")} rows={2} />
-          <Button data-testid="memory-save-btn" disabled={title.trim().length < 2 || save.isPending} onClick={() => save.mutate()}>
+          <label htmlFor="memory-content-field" className="sr-only">{t("memory.why")}</label>
+          <Textarea id="memory-content-field" data-testid="memory-content-input" value={content} onChange={(e) => setContent(e.target.value)} placeholder={t("memory.why")} rows={2} />
+          <Button className="min-h-11 w-full sm:w-auto" data-testid="memory-save-btn" disabled={title.trim().length < 2 || save.isPending} onClick={() => save.mutate()}>
             <Plus className="size-4" />
             {replaces ? t("memory.saveReplace") : t("memory.save")}
           </Button>
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-1.5">
-        {["all", ...MEM_KINDS].map((k) => (
-          <button key={k} data-testid={`memory-filter-${k}`} onClick={() => setFilter(k)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium ${filter === k ? "border-blue-600 bg-blue-600 text-white" : "bg-white text-slate-600"}`}>
-            {k === "all" ? t("tasks.filterAll") : t(`memory.kind.${k}`)}
-          </button>
-        ))}
+      <div className="-mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0" data-testid="memory-filter-scroll">
+        <div className="flex w-max gap-1.5">
+          {["all", ...MEM_KINDS].map((k) => (
+            <button key={k} data-testid={`memory-filter-${k}`} onClick={() => setFilter(k)}
+              className={`min-h-11 shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${filter === k ? "border-blue-600 bg-blue-600 text-white" : "bg-white text-slate-600"}`}>
+              {k === "all" ? t("tasks.filterAll") : t(`memory.kind.${k}`)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-2.5">
@@ -114,7 +118,7 @@ export default function MemoryPage() {
               <p className="text-xs text-slate-500">{t("memory.source")}: {m.source || "—"}</p>
               {m.replaces && byId.get(m.replaces) && <p className="text-xs text-slate-500">↺ {t("memory.replaced")}: {byId.get(m.replaces)?.title}</p>}
               {!m.superseded_by && (
-                <button data-testid={`memory-replace-${m.id}`} className="text-xs font-semibold text-blue-600 hover:underline" onClick={() => { setReplaces(m); setKind("decisao_chefe"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                <button data-testid={`memory-replace-${m.id}`} className="min-h-11 text-xs font-semibold text-blue-600 hover:underline" onClick={() => { setReplaces(m); setKind("decisao_chefe"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                   {t("memory.newDecision")}
                 </button>
               )}
